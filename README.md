@@ -17,3 +17,7 @@ Paste is a dynamically typed, stack based esoteric programming language build ar
 (put (fib 24))
 ```
 (the program above prints out the 24th fibonacci number)
+
+## The Language
+
+If you are interested in playing around with Paste, I highly recommend you check out my [Guide to Paste](guide.md) for an overview to what this language has to offer.
