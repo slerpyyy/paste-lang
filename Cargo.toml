@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 noisy_float = "0.1.12"
+pico-args = "0.3.4"

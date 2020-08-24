@@ -1,0 +1,25 @@
+# paste - standard library
+
+# Stack manipulation:
+;{ 1 copy } dup =
+;{ ;_ = } pop =
+;{ ;__xch_1 = ;__xch_2 = __xch_1 __xch_2 } xch =
+;{ 2 copy pop } over =
+
+# Unary operators:
+;{ 1 + } ++ =
+;{ 1 xch - } -- =
+;{ dup * } sq =
+;{ ;0 ;1 ? } ! =
+
+# Comparison operators:
+;{ xch < } > =
+;{ == ! } != =
+;{ < ! } <= =
+;{ > ! } >= =
+
+# Basic math:
+;{ xch 2 copy xch / floor * xch - } mod =
+;{ (copy 2) < ;xch if pop } min =
+;{ (copy 2) > ;xch if pop } max =
+;{ dup 0 - max } abs =

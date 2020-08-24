@@ -56,41 +56,41 @@ impl fmt::Display for Native {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Inst {
+pub enum Obj {
     Native(Native),
     Int(i32),
     Float(R32),
     Text(String),
-    Block(Vec<Inst>),
-    Defer(Box<Inst>),
+    Block(Vec<Obj>),
+    Defer(Box<Obj>),
 }
 
-impl fmt::Display for Inst {
+impl fmt::Display for Obj {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Inst::Native(n) => write!(f, "{}", n.to_str()),
-            Inst::Int(s) => write!(f, "{}", s),
-            Inst::Float(s) => write!(f, "{}", s),
-            Inst::Text(s) => {
+            Obj::Native(n) => write!(f, "{}", n.to_str()),
+            Obj::Int(s) => write!(f, "{}", s),
+            Obj::Float(s) => write!(f, "{}", s),
+            Obj::Text(s) => {
                 if s.contains(' ') {
                     write!(f, "\"{}\"", s)
                 } else {
                     write!(f, "{}", s)
                 }
             },
-            Inst::Block(s) => {
+            Obj::Block(s) => {
                 write!(f, "{{ ")?;
-                for inst in s {
-                    write!(f, "{} ", inst)?;
+                for obj in s {
+                    write!(f, "{} ", obj)?;
                 }
                 write!(f, "}}")
             },
-            Inst::Defer(s) => write!(f, ";{}", *s),
+            Obj::Defer(s) => write!(f, ";{}", *s),
         }
     }
 }
 
-pub fn parse(lexer: Lexer) -> Result<Vec<Inst>, &'static str> {
+pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
     let base = (Vec::new(), 0, false);
     let mut stack = vec![base];
 
@@ -101,16 +101,16 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Inst>, &'static str> {
         match token {
             Token::Text(s) => {
                 if let Some(n) = Native::from_str(s) {
-                    out.push(Inst::Native(n));
+                    out.push(Obj::Native(n));
                 } else {
-                    out.push(Inst::Text(s.to_string()));
+                    out.push(Obj::Text(s.to_string()));
                 }
             },
             Token::Int(i) => {
-                out.push(Inst::Int(i));
+                out.push(Obj::Int(i));
             },
             Token::Float(f) => {
-                out.push(Inst::Float(r32(f)));
+                out.push(Obj::Float(r32(f)));
             },
             Token::SemiColon => {
                 *defer_level += 1;
@@ -149,7 +149,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Inst>, &'static str> {
 
                 stack.last_mut()
                     .ok_or("closing boi without a friend")?
-                    .0.push(Inst::Block(inner));
+                    .0.push(Obj::Block(inner));
             },
         }
 
@@ -158,10 +158,10 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Inst>, &'static str> {
 
         if *defer_level > 0 {
             for _ in 0..*defer_level {
-                // SAFETY: The unwrap is only reached after an Inst has been
+                // SAFETY: The unwrap is only reached after an Obj has been
                 // pushed, because the loop is continued otherwise
                 let inner = Box::new(out.pop().unwrap());
-                out.push(Inst::Defer(inner));
+                out.push(Obj::Defer(inner));
             }
             *defer_level = 0;
         }
