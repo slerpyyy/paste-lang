@@ -137,10 +137,6 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
                 }
 
                 if reorder {
-                    // (exit) ~> { exit }
-                    // (put hello) ~> { hello put }
-                    // (4 - 3) ~> { 3 4 - }
-                    // (1 2 3 4 5) ~> { 5 4 3 1 2 }
                     if inner.len() > 2 {
                         inner.swap(0, 1);
                     }

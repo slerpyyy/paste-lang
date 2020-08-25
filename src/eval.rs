@@ -5,7 +5,7 @@ use noisy_float::prelude::*;
 use crate::parse::*;
 use crate::lex::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Evaluator {
     macros: HashMap<Obj, Obj>,
     stack: Vec<Obj>,
@@ -14,11 +14,11 @@ pub struct Evaluator {
 
 impl fmt::Display for Evaluator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "   ~> ")?;
+        write!(f, "   ~>  ")?;
         for obj in &self.stack {
-            write!(f, " {}", obj)?;
+            write!(f, "{} ", obj)?;
         }
-        write!(f, " |")?;
+        write!(f, "|")?;
         for obj in &self.work {
             write!(f, " {}", obj)?;
         }
@@ -42,11 +42,13 @@ impl Evaluator {
     }
 
     pub fn load_std(&mut self) {
+        // SAFETY: The standard library does not change depending
+        // on user input and is tested explicitly
         let std_lib = include_str!("std.paste");
         self.extend_code(std_lib).unwrap();
     }
 
-    pub fn extend_code(&mut self, source: &str) -> Result<(), &str> {
+    pub fn extend_code(&mut self, source: &str) -> Result<(), &'static str> {
         let prog = parse(lex(source))?;
         self.work.extend(prog);
         Ok(())
@@ -56,7 +58,7 @@ impl Evaluator {
         self.work.extend(prog);
     }
 
-    fn eval_native<R, W>(&mut self, obj: Native, _input: &mut R, output: &mut W) -> Result<(), &str>
+    fn eval_native<R, W>(&mut self, obj: Native, _input: &mut R, output: &mut W) -> Result<(), &'static str>
     where R: Read, W: Write {
         match obj {
             Native::Assign => {
@@ -234,7 +236,7 @@ impl Evaluator {
         self.work.is_empty()
     }
 
-    pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<bool, &str>
+    pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), &'static str>
     where R: Read, W: Write {
         let obj = self.work.pop_front()
             .map(|old| self.macro_replace(old));
@@ -248,17 +250,16 @@ impl Evaluator {
                 );
             },
             Some(s) => { self.stack.push(s); },
-            None => return Ok(true),
+            None => return Ok(()),
         }
 
-        Ok(false)
+        Ok(())
     }
 
-    pub fn run<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), &str>
+    pub fn run<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), &'static str>
     where R: Read, W: Write {
         while !self.done() {
-            // TODO: Fix this
-            self.step(input, output).unwrap();
+            self.step(input, output)?;
         }
 
         Ok(())
@@ -270,8 +271,7 @@ fn eval<R, W>(prog: Vec<Obj>, input: &mut R, output: &mut W) -> Result<(), &'sta
 where R: Read, W: Write {
     let mut eval = Evaluator::with_std();
     eval.extend_program(prog);
-    // TODO: Fix this
-    eval.run(input, output).unwrap();
+    eval.run(input, output)?;
     Ok(())
 }
 
@@ -285,7 +285,6 @@ mod test {
     fn eval_helper(code: &str, expected: &str) {
         let prog = parse(lex(code)).unwrap();
         let mut output = Vec::new();
-        // TODO: Fix this
         eval(prog, &mut empty(), &mut output).unwrap();
         assert_eq!(output.as_slice(), expected.as_bytes());
     }
@@ -303,13 +302,15 @@ mod test {
 
     #[test]
     fn eval_fibonacci() {
-        let code = "(fib = ;{;n = 0 1 (n > 0) ;{xch over + (;n = (n - 1)) (n != 0)} while pop}) (put (fib 42))";
+        let code = "(fib = ;{;n = 0 1 (n > 0) ;{xch over + (;n = \
+            (n - 1)) (n != 0)} while pop}) (put (fib 42))";
         eval_helper(code, "267914296");
     }
 
     #[test]
     fn eval_gcd() {
-        let code = "(gcd = ;{1 ;{(copy 2) < ;xch if over xch - (0 != over)} while xch pop}) (put (35 gcd 91))";
+        let code = "(gcd = ;{1 ;{(copy 2) < ;xch if over xch - \
+            (0 != over)} while xch pop}) (put (35 gcd 91))";
         eval_helper(code, "7");
     }
 
