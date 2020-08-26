@@ -159,31 +159,31 @@ impl Evaluator {
                     (Native::Add, Obj::Text(mut s), Obj::Float(y)) => { s.push_str(y.to_string().as_str()); Obj::Text(s) },
                     (Native::Add, Obj::Int(x), Obj::Text(mut s)) => { s.push_str(x.to_string().as_str()); Obj::Text(s) },
                     (Native::Add, Obj::Int(x), Obj::Int(y)) => { Obj::Int(x + y) },
-                    (Native::Add, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r32(x as _) + y) },
+                    (Native::Add, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r64(x as _) + y) },
                     (Native::Add, Obj::Float(x), Obj::Text(mut s)) => { s.push_str(x.to_string().as_str()); Obj::Text(s) },
-                    (Native::Add, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x + r32(y as _)) },
+                    (Native::Add, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x + r64(y as _)) },
                     (Native::Add, Obj::Float(x), Obj::Float(y)) => { Obj::Float(x + y) },
 
                     (Native::Sub, Obj::Int(x), Obj::Int(y)) => { Obj::Int(x - y) },
-                    (Native::Sub, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r32(x as _) - y) },
-                    (Native::Sub, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x - r32(y as _)) },
+                    (Native::Sub, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r64(x as _) - y) },
+                    (Native::Sub, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x - r64(y as _)) },
                     (Native::Sub, Obj::Float(x), Obj::Float(y)) => { Obj::Float(x - y) },
 
                     (Native::Mul, Obj::Int(x), Obj::Int(y)) => { Obj::Int(x * y) },
-                    (Native::Mul, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r32(x as _) * y) },
-                    (Native::Mul, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x * r32(y as _)) },
+                    (Native::Mul, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r64(x as _) * y) },
+                    (Native::Mul, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x * r64(y as _)) },
                     (Native::Mul, Obj::Float(x), Obj::Float(y)) => { Obj::Float(x * y) },
 
                     (Native::Div, Obj::Int(x), Obj::Int(y)) => { Obj::Int(x / y) },
-                    (Native::Div, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r32(x as _) / y) },
-                    (Native::Div, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x / r32(y as _)) },
+                    (Native::Div, Obj::Int(x), Obj::Float(y)) => { Obj::Float(r64(x as _) / y) },
+                    (Native::Div, Obj::Float(x), Obj::Int(y)) => { Obj::Float(x / r64(y as _)) },
                     (Native::Div, Obj::Float(x), Obj::Float(y)) => { Obj::Float(x / y) },
 
                     (Native::Eq, x, y) => { Obj::Int((x == y) as _) },
 
                     (Native::Less, Obj::Int(x), Obj::Int(y)) => { Obj::Int((x < y) as _) },
-                    (Native::Less, Obj::Int(x), Obj::Float(y)) => { Obj::Int((r32(x as _) < y) as _) },
-                    (Native::Less, Obj::Float(x), Obj::Int(y)) => { Obj::Int((x < r32(y as _)) as _) },
+                    (Native::Less, Obj::Int(x), Obj::Float(y)) => { Obj::Int((r64(x as _) < y) as _) },
+                    (Native::Less, Obj::Float(x), Obj::Int(y)) => { Obj::Int((x < r64(y as _)) as _) },
                     (Native::Less, Obj::Float(x), Obj::Float(y)) => { Obj::Int((x < y) as _) },
 
                     _ => return Err("operation is undefined"),
@@ -302,15 +302,17 @@ mod test {
 
     #[test]
     fn eval_fibonacci() {
-        let code = "(fib = ;{;n = 0 1 (n > 0) ;{xch over + (;n = \
-            (n - 1)) (n != 0)} while pop}) (put (fib 42))";
+        let code = "\
+        (fib = ;{;n = 0 1 (n > 0) ;{xch over + (;n = (n - 1)) (n != 0)} while pop})
+        (put (fib 42))";
         eval_helper(code, "267914296");
     }
 
     #[test]
     fn eval_gcd() {
-        let code = "(gcd = ;{1 ;{(copy 2) < ;xch if over xch - \
-            (0 != over)} while xch pop}) (put (35 gcd 91))";
+        let code = "\
+        (gcd = ;{1 ;{(copy 2) < ;xch if over xch - (0 != over)} while xch pop})
+        (put (35 gcd 91))";
         eval_helper(code, "7");
     }
 

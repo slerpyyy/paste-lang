@@ -3,7 +3,7 @@
 # Stack manipulation:
 ;{ 1 copy } dup =
 ;{ ;_ = } pop =
-;{ ;__xch_1 = ;__xch_2 = __xch_1 __xch_2 } xch =
+;{ ;__x = ;__y = __x __y } xch =
 ;{ 2 copy pop } over =
 
 # Unary operators:
@@ -15,8 +15,8 @@
 # Comparison operators:
 ;{ xch < } > =
 ;{ == ! } != =
-;{ < ! } <= =
-;{ > ! } >= =
+;{ > ! } <= =
+;{ < ! } >= =
 
 # Basic math:
 ;{ xch 2 copy xch / floor * xch - } mod =

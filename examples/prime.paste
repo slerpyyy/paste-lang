@@ -1,0 +1,27 @@
+
+(prime = ;{
+    dup 4 > ;{  #  n: 0 1 2 3 4 ...
+        2 >     # !p: 1 1 0 0 1 ...
+    } ;{
+        2 0 1 ;{                 # n k  _
+            pop                  # n k
+            2 copy xch mod 0 ==  # n k  div
+            xch 1 + xch          # n k' div
+            3 copy pop dup * >   # n k' div break
+            over + !             # n k' div cond
+        } while
+        ;res = pop pop
+        res
+    } ? !    # prime = !div
+})
+
+(;n = 0)
+1 ;{
+    (prime n) ;{
+        (put n)
+        (put ", ")
+    } if
+
+    (;n = (n + 1))
+    (n < 1000)
+} while

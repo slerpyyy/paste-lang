@@ -1,0 +1,12 @@
+(sqrt = ;{
+    ;n =
+    (n / 2.0) ;k =
+
+    0 1 dup 2 copy 4 copy ;{
+        (;k = ((k + (n / k)) / 2.0))
+    } while
+
+    k
+})
+
+(put (sqrt 2.0))

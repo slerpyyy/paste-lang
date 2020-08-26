@@ -3,8 +3,8 @@ use std::str::*;
 #[derive(Debug, PartialEq)]
 pub enum Token<'a> {
     Text(&'a str),
-    Int(i32),
-    Float(f32),
+    Int(i64),
+    Float(f64),
     LeftCurly,
     RightCurly,
     LeftParen,
@@ -92,8 +92,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn finalize(raw: &'a str) -> Option<Token<'a>> {
-        let int = raw.parse::<i32>().ok().map(Token::Int);
-        let float = raw.parse::<f32>().ok().map(Token::Float);
+        let int = raw.parse::<i64>().ok().map(Token::Int);
+        let float = raw.parse::<f64>().ok().map(Token::Float);
         let text = Some(Token::Text(raw));
 
         int.or(float).or(text)

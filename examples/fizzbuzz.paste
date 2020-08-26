@@ -1,0 +1,13 @@
+1
+
+(fizzbuzz = ;{
+    0
+    over 3 xch mod 0 == dup ;(put "Fizz") if +
+    over 5 xch mod 0 == dup ;(put "Buzz") if +
+    ! ;{dup put} if " " put
+
+    1 + dup 100 >=
+    ;fizzbuzz if
+})
+
+fizzbuzz

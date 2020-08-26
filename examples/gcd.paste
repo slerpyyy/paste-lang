@@ -1,0 +1,10 @@
+(gcd = ;{
+    1 ;{
+        (copy 2) < ;xch if
+        over xch -
+        (0 != over)
+    } while
+    xch pop
+})
+
+(put (35 gcd 91))

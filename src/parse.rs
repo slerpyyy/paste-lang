@@ -58,8 +58,8 @@ impl fmt::Display for Native {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Obj {
     Native(Native),
-    Int(i32),
-    Float(R32),
+    Int(i64),
+    Float(R64),
     Text(String),
     Block(Vec<Obj>),
     Defer(Box<Obj>),
@@ -110,7 +110,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
                 out.push(Obj::Int(i));
             },
             Token::Float(f) => {
-                out.push(Obj::Float(r32(f)));
+                out.push(Obj::Float(r64(f)));
             },
             Token::SemiColon => {
                 *defer_level += 1;
