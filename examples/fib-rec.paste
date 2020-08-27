@@ -1,0 +1,14 @@
+(;f0 = 0)
+(;f1 = 1)
+
+(fib = ;{
+    ;n =
+    (;f + n) dup dup do !=
+    ;do ;{
+        (n - 1) (n - 2)
+        fib xch fib +
+        xch over xch =
+    } ?
+})
+
+(put (fib 42))

@@ -1,0 +1,17 @@
+(collatz = ;{
+    dup put ;n =
+
+    (;"col" + n) dup dup do !=
+    ;do ;{
+        (n == ((n / 2) * 2))
+        ;(n / 2) ;((3 * n) + 1) ?
+        xch over xch =
+    } ?
+
+    (n > 1) ;{
+        " -> " put
+        collatz
+    } if
+})
+
+(collatz 100)
