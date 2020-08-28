@@ -8,9 +8,7 @@ macro_rules! impl_native_enum {
     ($($tok: ident => $text: literal),*) => {
         #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
         pub enum Native {
-            Assign, Do, If, Tern, While, Copy, Put,
-            Add, Sub, Mul, Div, Eq, Less, Floor,
-            Exit, Abort
+            $($tok,)*
         }
 
         impl Native {
@@ -33,7 +31,6 @@ macro_rules! impl_native_enum {
 impl_native_enum!(
     Assign => "=",
     Do => "do",
-    If => "if",
     Tern => "?",
     While => "while",
     Copy => "copy",
@@ -45,8 +42,7 @@ impl_native_enum!(
     Eq => "==",
     Less => "<",
     Floor => "floor",
-    Exit => "exit",
-    Abort => "abort"
+    Exit => "exit"
 );
 
 impl fmt::Display for Native {
@@ -194,12 +190,12 @@ mod test {
 
     #[test]
     fn parse_deferred_blocks() {
-        let lexer = lex("1 ;{ ;{ hello } do ;put do } if");
+        let lexer = lex("1 ;{ ;{ hello } do ;put do } do");
         let prog = parse(lexer).unwrap();
         let result = format!("{:?}", prog);
         assert_eq!(result, "[Int(1), \
             Defer(Block([Defer(Block([Text(\"hello\")])), Native(Do), \
-            Defer(Native(Put)), Native(Do)])), Native(If)]");
+            Defer(Native(Put)), Native(Do)])), Native(Do)]");
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use std::io::{Read, Write};
-use std::process::exit;
+use std::process;
 use std::{fmt, collections::{HashMap, VecDeque}};
 use noisy_float::prelude::*;
 use crate::parse::*;
@@ -14,7 +14,6 @@ pub struct Evaluator {
 
 impl fmt::Display for Evaluator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "   ~>  ")?;
         for obj in &self.stack {
             write!(f, "{} ", obj)?;
         }
@@ -48,7 +47,7 @@ impl Evaluator {
         self.extend_code(std_lib).unwrap();
     }
 
-    pub fn extend_code(&mut self, source: &str) -> Result<(), &'static str> {
+    pub fn extend_code(&mut self, source: &str) -> Result<(), String> {
         let prog = parse(lex(source))?;
         self.work.extend(prog);
         Ok(())
@@ -58,12 +57,24 @@ impl Evaluator {
         self.work.extend(prog);
     }
 
-    fn eval_native<R, W>(&mut self, obj: Native, _input: &mut R, output: &mut W) -> Result<(), &'static str>
+    fn stack_assert(&self, len: usize) -> Result<(), String> {
+        if len > self.stack.len() {
+            return Err(format!(
+                "expected {} items on the stack, found {}",
+                len, self.stack.len()
+            ))
+        }
+
+        Ok(())
+    }
+
+    fn eval_native<R, W>(&mut self, obj: Native, _input: &mut R, output: &mut W) -> Result<(), String>
     where R: Read, W: Write {
         match obj {
             Native::Assign => {
-                let key = self.stack.pop().ok_or("out of stack")?;
-                let val = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(2)?;
+                let key = self.stack.pop().unwrap();
+                let val = self.stack.pop().unwrap();
 
                 if key != val && key != Obj::Text("_".to_string()) {
                     self.macros.insert(key, val);
@@ -71,36 +82,28 @@ impl Evaluator {
             },
 
             Native::Do => {
-                let x = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(1)?;
+                let x = self.stack.pop().unwrap();
                 self.work.push_front(x);
             },
 
-            Native::If => {
-                let stmt = self.stack.pop().ok_or("out of stack")?;
-                let cond = self.stack.pop().ok_or("out of stack")?;
-
-                match cond {
-                    Obj::Int(0) => (),
-                    Obj::Int(_) => self.work.push_front(stmt),
-                    _ => return Err("invalid condition"),
-                }
-            },
-
             Native::Tern => {
-                let else_stmt = self.stack.pop().ok_or("out of stack")?;
-                let then_stmt = self.stack.pop().ok_or("out of stack")?;
-                let cond   = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(3)?;
+                let else_stmt = self.stack.pop().unwrap();
+                let then_stmt = self.stack.pop().unwrap();
+                let cond = self.stack.pop().unwrap();
 
                 match cond {
                     Obj::Int(0) => self.work.push_front(else_stmt),
                     Obj::Int(_) => self.work.push_front(then_stmt),
-                    _ => return Err("invalid condition"),
+                    _ => return Err("invalid condition".to_string()),
                 }
             },
 
             Native::While => {
-                let stmt = self.stack.pop().ok_or("out of stack")?;
-                let cond = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(2)?;
+                let stmt = self.stack.pop().unwrap();
+                let cond = self.stack.pop().unwrap();
 
                 match cond {
                     Obj::Int(0) => (),
@@ -109,30 +112,32 @@ impl Evaluator {
                         self.work.push_front(Obj::Defer(Box::new(stmt.clone())));
                         self.work.push_front(stmt);
                     },
-                    _ => return Err("invalid condition"),
+                    _ => return Err("invalid condition".to_string()),
                 }
             },
 
             Native::Copy => {
-                let num = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(1)?;
+                let num = self.stack.pop().unwrap();
                 let len = self.stack.len();
 
                 match num {
                     Obj::Int(amount) => {
                         if amount < 0 || amount as usize > len {
-                            return Err("invalid copy amount");
+                            return Err("invalid copy amount".to_string());
                         }
 
                         for i in len.saturating_sub(amount as _)..len {
                             self.stack.push(self.stack[i].clone());
                         }
                     },
-                    _ => return Err("invalid copy"),
+                    _ => return Err("invalid copy".to_string()),
                 }
             },
 
             Native::Put => {
-                let obj = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(1)?;
+                let obj = self.stack.pop().unwrap();
 
                 let buffer = match obj {
                     Obj::Text(s) => s,
@@ -151,8 +156,9 @@ impl Evaluator {
             Native::Div |
             Native::Eq  |
             Native::Less => {
-                let a = self.stack.pop().ok_or("out of stack")?;
-                let b = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(2)?;
+                let a = self.stack.pop().unwrap();
+                let b = self.stack.pop().unwrap();
                 let c = match (obj, a, b) {
                     (Native::Add, Obj::Text(mut x), Obj::Text(y)) => { x.push_str(y.as_str()); Obj::Text(x) },
                     (Native::Add, Obj::Text(mut s), Obj::Int(y)) => { s.push_str(y.to_string().as_str()); Obj::Text(s) },
@@ -186,24 +192,31 @@ impl Evaluator {
                     (Native::Less, Obj::Float(x), Obj::Int(y)) => { Obj::Int((x < r64(y as _)) as _) },
                     (Native::Less, Obj::Float(x), Obj::Float(y)) => { Obj::Int((x < y) as _) },
 
-                    _ => return Err("operation is undefined"),
+                    _ => return Err("operation is undefined".to_string()),
                 };
 
                 self.stack.push(c);
             }
 
             Native::Floor => {
-                let num = self.stack.pop().ok_or("out of stack")?;
+                self.stack_assert(1)?;
+                let num = self.stack.pop().unwrap();
 
                 match num {
                     Obj::Int(_) => self.stack.push(num),
                     Obj::Float(x) => self.stack.push(Obj::Int(x.floor().raw() as _)),
-                    _ => return Err("operation is undefined"),
+                    _ => return Err("operation is undefined".to_string()),
                 }
             },
 
-            Native::Exit  => exit(0),
-            Native::Abort => exit(-1),
+            Native::Exit => {
+                let code = match self.stack.pop() {
+                    Some(Obj::Int(n)) => n as _,
+                    _ => -1,
+                };
+
+                process::exit(code)
+            },
         }
 
         Ok(())
@@ -236,27 +249,34 @@ impl Evaluator {
         self.work.is_empty()
     }
 
-    pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), &'static str>
+    pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
     where R: Read, W: Write {
         let obj = self.work.pop_front()
             .map(|old| self.macro_replace(old));
 
         match obj {
-            Some(Obj::Native(n)) => { self.eval_native(n, input, output)?; },
-            Some(Obj::Defer(s)) => { self.stack.push(*s); },
+            Some(Obj::Native(n)) => {
+                if let e @ Err(_) = self.eval_native(n, input, output) {
+                    // SAFETY: obj is guarantied to be some
+                    // because of the outer match
+                    self.work.push_front(obj.unwrap());
+                    return e;
+                }
+            },
             Some(Obj::Block(s)) => {
                 s.iter().rev().for_each(
                     |obj| self.work.push_front(obj.clone())
                 );
             },
-            Some(s) => { self.stack.push(s); },
+            Some(Obj::Defer(s)) => self.stack.push(*s),
+            Some(s) => self.stack.push(s),
             None => return Ok(()),
         }
 
         Ok(())
     }
 
-    pub fn run<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), &'static str>
+    pub fn run<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
     where R: Read, W: Write {
         while !self.done() {
             self.step(input, output)?;
@@ -267,7 +287,7 @@ impl Evaluator {
 }
 
 #[allow(dead_code)]
-fn eval<R, W>(prog: Vec<Obj>, input: &mut R, output: &mut W) -> Result<(), &'static str>
+fn eval<R, W>(prog: Vec<Obj>, input: &mut R, output: &mut W) -> Result<(), String>
 where R: Read, W: Write {
     let mut eval = Evaluator::with_std();
     eval.extend_program(prog);

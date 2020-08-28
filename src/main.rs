@@ -75,10 +75,15 @@ fn main() {
         let mut newline = false;
         while !paste.done() {
             if debug {
-                println!("{}", paste);
+                println!("   ~>  {}", paste);
             }
+
             let mut output = Vec::new();
-            paste.step(&mut io::empty(), &mut output).unwrap();
+            if let Err(s) = paste.step(&mut io::empty(), &mut output) {
+                eprintln!("Error: {}", s);
+                eprintln!("# {}\n", paste);
+                process::exit(-1);
+            }
 
             if !output.is_empty() {
                 newline = true;
@@ -89,7 +94,7 @@ fn main() {
 
         // trailing output
         if debug {
-            println!("{}", paste);
+            println!("   ~>  {}", paste);
         } else if newline {
             println!();
         }
