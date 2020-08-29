@@ -25,6 +25,13 @@ impl fmt::Display for Evaluator {
     }
 }
 
+macro_rules! pop_stack {
+    ($self:ident, $num:expr, $($var:ident),*) => {
+        $self.stack_assert($num)?;
+        $(let $var = $self.stack.pop().unwrap();)*
+    };
+}
+
 impl Evaluator {
     pub fn new() -> Self {
         Self {
@@ -72,9 +79,7 @@ impl Evaluator {
     where R: Read, W: Write {
         match obj {
             Native::Assign => {
-                self.stack_assert(2)?;
-                let key = self.stack.pop().unwrap();
-                let val = self.stack.pop().unwrap();
+                pop_stack!(self, 2, key, val);
 
                 if key != val && key != Obj::Text("_".to_string()) {
                     self.macros.insert(key, val);
@@ -82,28 +87,27 @@ impl Evaluator {
             },
 
             Native::Do => {
-                self.stack_assert(1)?;
-                let x = self.stack.pop().unwrap();
+                pop_stack!(self, 1, x);
                 self.work.push_front(x);
             },
 
             Native::Tern => {
-                self.stack_assert(3)?;
-                let else_stmt = self.stack.pop().unwrap();
-                let then_stmt = self.stack.pop().unwrap();
-                let cond = self.stack.pop().unwrap();
+                pop_stack!(self, 3, else_stmt, then_stmt, cond);
 
                 match cond {
                     Obj::Int(0) => self.work.push_front(else_stmt),
                     Obj::Int(_) => self.work.push_front(then_stmt),
-                    _ => return Err("invalid condition".to_string()),
+                    _ => {
+                        self.stack.push(cond);
+                        self.stack.push(then_stmt);
+                        self.stack.push(else_stmt);
+                        return Err("invalid condition".to_string())
+                    },
                 }
             },
 
             Native::While => {
-                self.stack_assert(2)?;
-                let stmt = self.stack.pop().unwrap();
-                let cond = self.stack.pop().unwrap();
+                pop_stack!(self, 2, stmt, cond);
 
                 match cond {
                     Obj::Int(0) => (),
@@ -112,18 +116,22 @@ impl Evaluator {
                         self.work.push_front(Obj::Defer(Box::new(stmt.clone())));
                         self.work.push_front(stmt);
                     },
-                    _ => return Err("invalid condition".to_string()),
+                    _ => {
+                        self.stack.push(cond);
+                        self.stack.push(stmt);
+                        return Err("invalid condition".to_string())
+                    },
                 }
             },
 
             Native::Copy => {
-                self.stack_assert(1)?;
-                let num = self.stack.pop().unwrap();
+                pop_stack!(self, 1, num);
                 let len = self.stack.len();
 
                 match num {
                     Obj::Int(amount) => {
                         if amount < 0 || amount as usize > len {
+                            self.stack.push(num);
                             return Err("invalid copy amount".to_string());
                         }
 
@@ -131,13 +139,16 @@ impl Evaluator {
                             self.stack.push(self.stack[i].clone());
                         }
                     },
-                    _ => return Err("invalid copy".to_string()),
+
+                    _ => {
+                        self.stack.push(num);
+                        return Err("invalid copy".to_string())
+                    },
                 }
             },
 
             Native::Put => {
-                self.stack_assert(1)?;
-                let obj = self.stack.pop().unwrap();
+                pop_stack!(self, 1, obj);
 
                 let buffer = match obj {
                     Obj::Text(s) => s,
@@ -156,9 +167,8 @@ impl Evaluator {
             Native::Div |
             Native::Eq  |
             Native::Less => {
-                self.stack_assert(2)?;
-                let a = self.stack.pop().unwrap();
-                let b = self.stack.pop().unwrap();
+                pop_stack!(self, 2, a, b);
+
                 let c = match (obj, a, b) {
                     (Native::Add, Obj::Text(mut x), Obj::Text(y)) => { x.push_str(y.as_str()); Obj::Text(x) },
                     (Native::Add, Obj::Text(mut s), Obj::Int(y)) => { s.push_str(y.to_string().as_str()); Obj::Text(s) },
@@ -192,20 +202,28 @@ impl Evaluator {
                     (Native::Less, Obj::Float(x), Obj::Int(y)) => { Obj::Int((x < r64(y as _)) as _) },
                     (Native::Less, Obj::Float(x), Obj::Float(y)) => { Obj::Int((x < y) as _) },
 
-                    _ => return Err("operation is undefined".to_string()),
+                    (_, a, b) => {
+                        self.stack.push(b);
+                        self.stack.push(a);
+                        return Err("operation is undefined".to_string())
+                    },
                 };
 
                 self.stack.push(c);
             }
 
             Native::Floor => {
-                self.stack_assert(1)?;
-                let num = self.stack.pop().unwrap();
+                pop_stack!(self, 1, num);
 
                 match num {
                     Obj::Int(_) => self.stack.push(num),
-                    Obj::Float(x) => self.stack.push(Obj::Int(x.floor().raw() as _)),
-                    _ => return Err("operation is undefined".to_string()),
+                    Obj::Float(x) => {
+                        self.stack.push(Obj::Int(x.floor().raw() as _))
+                    },
+                    _ => {
+                        self.stack.push(num);
+                        return Err("operation is undefined".to_string())
+                    },
                 }
             },
 
@@ -251,15 +269,15 @@ impl Evaluator {
 
     pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
     where R: Read, W: Write {
-        let obj = self.work.pop_front()
+        let obj_opt = self.work.pop_front()
             .map(|old| self.macro_replace(old));
 
-        match obj {
+        match obj_opt {
             Some(Obj::Native(n)) => {
                 if let e @ Err(_) = self.eval_native(n, input, output) {
-                    // SAFETY: obj is guarantied to be some
+                    // SAFETY: obj_opt is guarantied to be some
                     // because of the outer match
-                    self.work.push_front(obj.unwrap());
+                    self.work.push_front(obj_opt.unwrap());
                     return e;
                 }
             },
