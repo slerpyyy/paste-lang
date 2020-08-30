@@ -81,7 +81,7 @@ impl Evaluator {
             Native::Assign => {
                 pop_stack!(self, 2, key, val);
 
-                if key != val && key != Obj::Text("_".to_string()) {
+                if key != val && key != Obj::Text("_".into()) {
                     self.macros.insert(key, val);
                 }
             },
@@ -101,7 +101,7 @@ impl Evaluator {
                         self.stack.push(cond);
                         self.stack.push(then_stmt);
                         self.stack.push(else_stmt);
-                        return Err("invalid condition".to_string())
+                        return Err("invalid condition".into())
                     },
                 }
             },
@@ -119,7 +119,7 @@ impl Evaluator {
                     _ => {
                         self.stack.push(cond);
                         self.stack.push(stmt);
-                        return Err("invalid condition".to_string())
+                        return Err("invalid condition".into())
                     },
                 }
             },
@@ -132,7 +132,7 @@ impl Evaluator {
                     Obj::Int(amount) => {
                         if amount < 0 || amount as usize > len {
                             self.stack.push(num);
-                            return Err("invalid copy amount".to_string());
+                            return Err("invalid copy amount".into());
                         }
 
                         for i in len.saturating_sub(amount as _)..len {
@@ -142,7 +142,7 @@ impl Evaluator {
 
                     _ => {
                         self.stack.push(num);
-                        return Err("invalid copy".to_string())
+                        return Err("invalid copy".into())
                     },
                 }
             },
@@ -205,7 +205,7 @@ impl Evaluator {
                     (_, a, b) => {
                         self.stack.push(b);
                         self.stack.push(a);
-                        return Err("operation is undefined".to_string())
+                        return Err("operation is undefined".into())
                     },
                 };
 
@@ -222,7 +222,7 @@ impl Evaluator {
                     },
                     _ => {
                         self.stack.push(num);
-                        return Err("operation is undefined".to_string())
+                        return Err("operation is undefined".into())
                     },
                 }
             },
@@ -352,6 +352,14 @@ mod test {
         (gcd = ;{1 ;{(copy 2) < ;xch if over xch - (0 != over)} while xch pop})
         (put (35 gcd 91))";
         eval_helper(code, "7");
+    }
+
+    #[test]
+    fn eval_power() {
+        let code = "\
+        (pow = ;{;n = ;k = (k > 1) ;((n pow (k - 1)) * n) ;n ?})
+        (0.9 pow 100) put";
+        eval_helper(code, "0.000026561398887587544");
     }
 
     #[test]

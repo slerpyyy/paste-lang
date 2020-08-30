@@ -114,7 +114,13 @@ fn main() {
 
         // append to program
         let tokens = lex(buffer.as_str());
-        let program = parse(tokens).unwrap();
+        let program = match parse(tokens) {
+            Ok(s) => s,
+            Err(s) => {
+                eprintln!("Error: {}\n", s);
+                process::exit(-1);
+            }
+        };
         paste.extend_program(program);
     }
 }

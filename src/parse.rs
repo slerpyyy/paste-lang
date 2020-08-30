@@ -92,14 +92,14 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
 
     for token in lexer {
         let (out, defer_level, _) = stack.last_mut()
-            .ok_or("too many closing bois")?;
+            .ok_or("too many closing brackets")?;
 
         match token {
             Token::Text(s) => {
                 if let Some(n) = Native::from_str(s) {
                     out.push(Obj::Native(n));
                 } else {
-                    out.push(Obj::Text(s.to_string()));
+                    out.push(Obj::Text(s.into()));
                 }
             },
             Token::Int(i) => {
@@ -129,7 +129,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
                 let (mut inner, _, reorder) = stack.pop().unwrap();
 
                 if reorder != (token == Token::RightParen) {
-                    return Err("wrong closing bois");
+                    return Err("wrong closing brackets");
                 }
 
                 if reorder {
@@ -140,18 +140,18 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
                 }
 
                 stack.last_mut()
-                    .ok_or("closing boi without a friend")?
+                    .ok_or("closing bracket without a friend")?
                     .0.push(Obj::Block(inner));
             },
         }
 
         let (out, defer_level, _) = stack.last_mut()
-            .ok_or("too many closing bois")?;
+            .ok_or("too many closing brackets")?;
 
         if *defer_level > 0 {
             for _ in 0..*defer_level {
-                // SAFETY: The unwrap is only reached after an Obj has been
-                // pushed, because the loop is continued otherwise
+                // SAFETY: The unwrap is only reached after an obj has
+                // been pushed, because the loop is continued otherwise
                 let inner = Box::new(out.pop().unwrap());
                 out.push(Obj::Defer(inner));
             }
@@ -160,14 +160,14 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
     }
 
     let (prog, trailing_defer, _) = stack.pop()
-        .ok_or("opening boi without a friend")?;
+        .ok_or("opening bracket without a friend")?;
 
     if trailing_defer > 0 {
         return Err("trailing defer");
     }
 
     if !stack.is_empty() {
-        return Err("too many opening bois");
+        return Err("too many opening brackets");
     }
 
     Ok(prog)
