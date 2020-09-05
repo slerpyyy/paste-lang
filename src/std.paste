@@ -27,6 +27,9 @@
 ;{ 2 copy < ;xch if pop } min =
 ;{ 2 copy > ;xch if pop } max =
 ;{ dup 0 - max } abs =
+;{ 0.5 + floor } round =
+;{ neg floor neg } ceil =
+;{ dup floor xch - } fract =
 
 # Control flow:
 ;{ 0 exit } quit =

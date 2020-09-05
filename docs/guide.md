@@ -64,12 +64,13 @@ Let's look at it in a bit more detail:
 -  # 1      pops 2 objects and subtracts the first from the second
 ```
 
-To make working with the stack a bit more comfortable, the following macros are provided by the standard library:
+To make working with the stack a bit more comfortable, the following operations and macros are provided by default:
 ```py
-dup   # a -- a a
-pop   # a --
-xch   # a b -- b a
-over  # a b -- a b a
+dup    # a -- a a
+pop    # a --
+xch    # a b -- b a
+over   # a b -- a b a
+under  # a b -- b
 ```
 
 ## Macros
@@ -93,7 +94,7 @@ Since macros are applied sequentially, circularity is no concern:
 5 7 =  # sets 5 to 5, because 7 is 5
 ```
 
-\*The object `_` (pronounced "meh") cannot be used as a macro. Attempting to assign a macro to `_` is equivalent to popping an object off the stack.
+\*The object `_` (pronounced "meh") cannot be used as a macro. Attempting to assign a macro to `_` is always equivalent to simply popping an object off the stack.
 
 ## Blocks
 
@@ -134,6 +135,8 @@ To make working with binary operators easier, there is an alternative to the nor
 
 This is especially useful when working with macros rather than on the stack directly:
 ```py
-(a = 3) (b = (a + 2))
+(a = 3)
+(b = (a + 2))
+
 (a != b) ;(put "this will print") if
 ```
