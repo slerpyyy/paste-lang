@@ -26,8 +26,10 @@ impl fmt::Display for Evaluator {
 }
 
 macro_rules! pop_stack {
-    ($self:ident, $num:expr, $($var:ident),*) => {
-        $self.stack_assert($num)?;
+    ($self:ident, $($var:ident),*) => {
+        #[allow(unused_variables)]
+        $self.stack_assert(0 $(+ {let $var = 0; 1})*)?;
+
         $(let $var = $self.stack.pop().unwrap();)*
     };
 }
@@ -79,7 +81,7 @@ impl Evaluator {
     where R: Read, W: Write {
         match obj {
             Native::Assign => {
-                pop_stack!(self, 2, key, val);
+                pop_stack!(self, key, val);
 
                 if key != val && key != Obj::Text("_".into()) {
                     self.macros.insert(key, val);
@@ -87,12 +89,12 @@ impl Evaluator {
             },
 
             Native::Do => {
-                pop_stack!(self, 1, x);
+                pop_stack!(self, x);
                 self.work.push_front(x);
             },
 
             Native::Tern => {
-                pop_stack!(self, 3, else_stmt, then_stmt, cond);
+                pop_stack!(self, else_stmt, then_stmt, cond);
 
                 match cond {
                     Obj::Int(0) => self.work.push_front(else_stmt),
@@ -107,7 +109,7 @@ impl Evaluator {
             },
 
             Native::While => {
-                pop_stack!(self, 2, stmt, cond);
+                pop_stack!(self, stmt, cond);
 
                 match cond {
                     Obj::Int(0) => (),
@@ -125,7 +127,7 @@ impl Evaluator {
             },
 
             Native::Copy => {
-                pop_stack!(self, 1, num);
+                pop_stack!(self, num);
                 let len = self.stack.len();
 
                 match num {
@@ -148,7 +150,7 @@ impl Evaluator {
             },
 
             Native::Put => {
-                pop_stack!(self, 1, obj);
+                pop_stack!(self, obj);
 
                 let buffer = match obj {
                     Obj::Text(s) => s,
@@ -167,7 +169,7 @@ impl Evaluator {
             Native::Div |
             Native::Eq  |
             Native::Less => {
-                pop_stack!(self, 2, a, b);
+                pop_stack!(self, a, b);
 
                 let c = match (obj, a, b) {
                     (Native::Add, Obj::Text(mut x), Obj::Text(y)) => { x.push_str(y.as_str()); Obj::Text(x) },
@@ -213,7 +215,7 @@ impl Evaluator {
             }
 
             Native::Floor => {
-                pop_stack!(self, 1, num);
+                pop_stack!(self, num);
 
                 match num {
                     Obj::Int(_) => self.stack.push(num),
@@ -406,9 +408,9 @@ mod test {
 
     #[test]
     fn eval_ternary() {
-        let code = "(3 == 4) ;{ same } ;{ different } ? put";
-        eval_helper(code, "different");
-        let code = "(2 == 2) ;{ same } ;{ different } ? put";
-        eval_helper(code, "same");
+        let code = "\
+        ;{== ;a ;b ? put} test =
+        (3 test 5) (4 test 4)";
+        eval_helper(code, "ba");
     }
 }

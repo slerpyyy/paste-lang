@@ -61,8 +61,13 @@ fn main() {
         file.read_to_string(&mut content)
             .expect("failed to read file");
 
-        paste.extend_code(content.as_str())
-            .unwrap();
+        match paste.extend_code(content.as_str()) {
+            Ok(s) => s,
+            Err(s) => {
+                eprintln!("Error: {}\n", s);
+                process::exit(-1);
+            }
+        }
 
         no_script = false;
     }

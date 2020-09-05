@@ -28,7 +28,7 @@
 ;{ 2 copy > ;xch if pop } max =
 ;{ dup 0 - max } abs =
 
-# Control flow
+# Control flow:
 ;{ 0 exit } quit =
 ;{ -1 exit } abort =
 ;{ ;{} ? } if =
