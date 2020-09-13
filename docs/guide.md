@@ -10,7 +10,7 @@
     } while
     xch pop
 })
-(put (gcd 35 91))
+(put gcd 35 91)
 ```
 ## Debug Mode
 
@@ -35,7 +35,7 @@ The Paste interpreter comes with a build-in debug mode, which can be enabled usi
 ## Symbols
 
 In Paste, everything is a symbol. A symbol may of may not have special meaning attached to it. If a symbol represents an operation or a macro, it is evaluated eagerly. If a symbol has no meaning assigned to it, it is simply placed on the stack during evaluation. Eager evaluation can be deferred, by adding a `;` at the beginning of a token. The `;` itself is not part of the token.
-```hs
+```py
 1 2 +  # stack: 3
 4 ;+   # stack: 3 4 +
 do     # stack: 7
@@ -54,7 +54,7 @@ Paste is a stack based language. Every symbol either puts itself onto the stack 
 ```
 
 Let's look at it in a bit more detail:
-```hs
+```py
 2  # 2      puts the symbol 2 onto the stack
 1  # 2 1    pushes the symbol 1 onto the stack
 3  # 2 1 3  pushes 3 onto the stack
@@ -65,7 +65,7 @@ Let's look at it in a bit more detail:
 ```
 
 To make working with the stack a bit more comfortable, the following operations and macros are provided by default:
-```hs
+```py
 dup    # a -- a a
 pop    # a --
 xch    # a b -- b a
@@ -76,20 +76,20 @@ under  # a b -- b
 ## Macros
 
 Macros are defined using the `=` operator, which pops two symbols off the stack and assigns the first to the second.
-```hs
+```py
 5 n =   # n is now 5
 n put   # prints "5"
 ```
 
 **Note:** This this works with every\* pair of symbols.
-```hs
+```py
 2 4 =   # 4 is now 2
 1 4 +   # calculates 1 + 4, which is 3, because 4 is 2
 put     # prints "3"
 ```
 
 Since macros are applied sequentially, circularity is no concern:
-```hs
+```py
 7 5 =  # 7 is now 5
 5 7 =  # sets 5 to 5, because 7 is 5
 ```
@@ -103,7 +103,7 @@ Blocks are symbols which contain other symbols. Like every other symbol, they ar
  - `if` pops a number and am symbol and only runs the symbol, if the number if different to zero
  - `while` works like `if`, but loops until the popped condition is zero
 
-```hs
+```py
 { "Hello World" put }            # always prints "Hello World"
 n 5 == ;{ "n is five" put } if   # only prints, when n is equal to 5
 0 1 1 1 ;{ "Hi" put } while      # prints "Hi" 3 times
@@ -111,14 +111,14 @@ n 5 == ;{ "n is five" put } if   # only prints, when n is equal to 5
 ```
 
 Block symbols can be given names using macros to simulate function-like behavior:
-```hs
+```py
 ;{ 2 copy > ;{ xch } if pop } ;max =  # defines a max "function"
 5 2 max   # calculates max of both numbers
 put       # prints "5"
 ```
 
 Named block symbols can also be used to create loops:
-```hs
+```py
 ;{ dup put ;b if } b =  # defines a block named "b"
 0 1 2 3 4 b             # prints the numbers 4 to 0
 ```
@@ -128,7 +128,7 @@ Named block symbols can also be used to create loops:
 Since paste is a stack based language, the token order you naturally end up with is [reverse polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation).
 To make working with function-like macros a little more intuitive, there is an alternative to the normal code blocks, which uses parenthesis instead of curly brackets.
 These alternative blocks reverse the order of their containing symbols during parsing, effectively simulating polish notation:
-```hs
+```py
 (quit)         ~>  {quit}
 (put "hello")  ~>  {"hello" put}
 (+ 4 3)        ~>  {3 4 +}

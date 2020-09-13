@@ -14,5 +14,5 @@
 | y x `/` | Divides `x` by `y` |
 | y x `==` | Returns 1 if x and y are equal, and 0 otherwise |
 | y x `<` | Returns 1 if `x` is less than `y`, and 0 otherwise |
-| f `floor` | Converts a float `f` into an int, by flooring it |
+| f `floor` | Converts a float `f` into an int by flooring it |
 | code `exit` | Terminates the program with a given exit code |
