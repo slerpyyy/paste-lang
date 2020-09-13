@@ -141,7 +141,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
                     .0.push(Sym::Block(inner));
             },
             Token::Tick => {
-                let sym = out.pop().expect("tick without a symbol");
+                let sym = out.pop().ok_or("tick without a symbol")?;
                 out.insert(0, sym);
             },
         }

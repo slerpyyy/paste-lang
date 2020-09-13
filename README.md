@@ -3,7 +3,7 @@
 
 Paste is a dynamically typed, stack based esoteric programming language build around macros, which are defined and applied at runtime.
 
-```rs
+```hs
 (fib =' ;{
     ;n =
     0 1
