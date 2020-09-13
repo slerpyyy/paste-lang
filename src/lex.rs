@@ -10,6 +10,7 @@ pub enum Token<'a> {
     LeftParen,
     RightParen,
     SemiColon,
+    Tick,
 }
 
 pub struct Lexer<'a> {
@@ -62,7 +63,7 @@ impl<'a> Lexer<'a> {
 
         while let Some(ch) = self.curr {
             if ch.is_whitespace()
-            || matches!(ch, '{' | '}' | '(' | ')' | '"' | ';' | '#') {
+            || matches!(ch, '{' | '}' | '(' | ')' | '"' | ';' | '\'' | '#') {
                 break;
             }
 
@@ -108,13 +109,14 @@ impl<'a> Iterator for Lexer<'a> {
         self.comments();
 
         match self.curr? {
-            '{' => self.single(Token::LeftCurly),
-            '}' => self.single(Token::RightCurly),
-            '(' => self.single(Token::LeftParen),
-            ')' => self.single(Token::RightParen),
-            ';' => self.single(Token::SemiColon),
-            '"' => self.string(),
-            _   => self.text(),
+            '{'  => self.single(Token::LeftCurly),
+            '}'  => self.single(Token::RightCurly),
+            '('  => self.single(Token::LeftParen),
+            ')'  => self.single(Token::RightParen),
+            ';'  => self.single(Token::SemiColon),
+            '\'' => self.single(Token::Tick),
+            '"'  => self.string(),
+            _    => self.text(),
         }
     }
 }

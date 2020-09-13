@@ -1,8 +1,8 @@
-(fac = ;{
+(fac =' ;{
     ;n =
-    (n > 1) ;{
-        n (n - 1) fac *
+    (n >' 1) ;{
+        n (n -' 1) fac *
     } ;1 ?
 })
 
-(put (fac 13))
+(put fac 13)

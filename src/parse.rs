@@ -52,41 +52,41 @@ impl fmt::Display for Native {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Obj {
+pub enum Sym {
     Native(Native),
     Int(i64),
     Float(R64),
     Text(String),
-    Block(Vec<Obj>),
-    Defer(Box<Obj>),
+    Block(Vec<Sym>),
+    Defer(Box<Sym>),
 }
 
-impl fmt::Display for Obj {
+impl fmt::Display for Sym {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Obj::Native(n) => write!(f, "{}", n.to_str()),
-            Obj::Int(s) => write!(f, "{}", s),
-            Obj::Float(s) => write!(f, "{}", s),
-            Obj::Text(s) => {
+            Sym::Native(n) => write!(f, "{}", n.to_str()),
+            Sym::Int(s) => write!(f, "{}", s),
+            Sym::Float(s) => write!(f, "{}", s),
+            Sym::Text(s) => {
                 if s.contains(' ') {
                     write!(f, "\"{}\"", s)
                 } else {
                     write!(f, "{}", s)
                 }
             },
-            Obj::Block(s) => {
+            Sym::Block(s) => {
                 write!(f, "{{ ")?;
-                for obj in s {
-                    write!(f, "{} ", obj)?;
+                for sym in s {
+                    write!(f, "{} ", sym)?;
                 }
                 write!(f, "}}")
             },
-            Obj::Defer(s) => write!(f, ";{}", *s),
+            Sym::Defer(s) => write!(f, ";{}", *s),
         }
     }
 }
 
-pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
+pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
     let base = (Vec::new(), 0, false);
     let mut stack = vec![base];
 
@@ -97,16 +97,16 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
         match token {
             Token::Text(s) => {
                 if let Some(n) = Native::from_str(s) {
-                    out.push(Obj::Native(n));
+                    out.push(Sym::Native(n));
                 } else {
-                    out.push(Obj::Text(s.into()));
+                    out.push(Sym::Text(s.into()));
                 }
             },
             Token::Int(i) => {
-                out.push(Obj::Int(i));
+                out.push(Sym::Int(i));
             },
             Token::Float(f) => {
-                out.push(Obj::Float(r64(f)));
+                out.push(Sym::Float(r64(f)));
             },
             Token::SemiColon => {
                 *defer_level += 1;
@@ -114,8 +114,8 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
             },
             Token::LeftCurly |
             Token::LeftParen => {
-                let reorder = token == Token::LeftParen;
-                stack.push((Vec::new(), 0, reorder));
+                let reverse = token == Token::LeftParen;
+                stack.push((Vec::new(), 0, reverse));
                 continue;
             },
             Token::RightCurly |
@@ -126,22 +126,23 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
 
                 // SAFETY: The case that the stack is empty is caught
                 // in the beginning of the loop
-                let (mut inner, _, reorder) = stack.pop().unwrap();
+                let (mut inner, _, reverse) = stack.pop().unwrap();
 
-                if reorder != (token == Token::RightParen) {
+                if reverse != (token == Token::RightParen) {
                     return Err("wrong closing brackets");
                 }
 
-                if reorder {
-                    if inner.len() > 2 {
-                        inner.swap(0, 1);
-                    }
+                if reverse {
                     inner.reverse();
                 }
 
                 stack.last_mut()
                     .ok_or("closing bracket without a friend")?
-                    .0.push(Obj::Block(inner));
+                    .0.push(Sym::Block(inner));
+            },
+            Token::Tick => {
+                let sym = out.pop().expect("tick without a symbol");
+                out.insert(0, sym);
             },
         }
 
@@ -150,10 +151,10 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Obj>, &'static str> {
 
         if *defer_level > 0 {
             for _ in 0..*defer_level {
-                // SAFETY: The unwrap is only reached after an obj has
+                // SAFETY: The unwrap is only reached after an sym has
                 // been pushed, because the loop is continued otherwise
                 let inner = Box::new(out.pop().unwrap());
-                out.push(Obj::Defer(inner));
+                out.push(Sym::Defer(inner));
             }
             *defer_level = 0;
         }
@@ -199,8 +200,17 @@ mod test {
     }
 
     #[test]
+    fn parse_tick_simple() {
+        let lexer = lex("3 4' (2 +' 3)'' * +");
+        let prog = parse(lexer).unwrap();
+        let result = format!("{:?}", prog);
+        assert_eq!(result, "[Int(3), Block([Int(3), Int(2), \
+            Native(Add)]), Int(4), Native(Mul), Native(Add)]");
+    }
+
+    #[test]
     fn parse_paren_simple() {
-        let lexer = lex("(1 + (2 * 3)) put");
+        let lexer = lex("(1 +' (2 *' 3)) put");
         let prog = parse(lexer).unwrap();
         let result = format!("{:?}", prog);
         assert_eq!(result, "[Block([Block([Int(3), Int(2), \

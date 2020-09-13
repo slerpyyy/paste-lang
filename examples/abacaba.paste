@@ -1,0 +1,14 @@
+(abacaba =' ;{
+    ;n =
+    (n <' 2)
+    ;(put n)
+    ;{
+        n
+        (n -' 1) abacaba
+        ;n =
+        (put n)
+        (n -' 1) abacaba
+    } ?
+})
+
+(abacaba 7)

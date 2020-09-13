@@ -3,11 +3,11 @@
 | Usage | Meaning |
 |---|---|
 | val name `=` | Assigns `name` the meaning of `val` |
-| object `do` | Evaluated `object` |
+| symbol `do` | Evaluated `symbol` |
 | cond then else `?` | Evaluated `then` if `cond` is true, and `else` otherwise |
 | cond stmt `while` | If `cond` is true, it evaluates `stmt ;stmt while`, and does nothing otherwise |
-| num `copy` | Copies the last `num` objects on the stack |
-| object `put` | Prints an object |
+| num `copy` | Copies the last `num` symbols on the stack |
+| symbol `put` | Prints a symbol |
 | y x `+` | Adds `x` and `y` together |
 | y x `-` | Subtracts `y` from `x` |
 | y x `*` | Multiplies `x` and `y` |
