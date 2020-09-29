@@ -5,23 +5,23 @@ use noisy_float::prelude::*;
 use crate::lex::*;
 
 macro_rules! impl_native_enum {
-    ($($tok: ident => $text: literal),*) => {
+    ($($tok: ident => $text: literal,)+) => {
         #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
         pub enum Native {
-            $($tok,)*
+            $($tok,)+
         }
 
         impl Native {
             pub fn from_str(string: &str) -> Option<Native> {
                 match string {
-                    $($text => Some(Native::$tok),)*
+                    $($text => Some(Native::$tok),)+
                     _ => None,
                 }
             }
 
             pub fn to_str(&self) -> &'static str {
                 match self {
-                    $(Native::$tok => $text,)*
+                    $(Native::$tok => $text,)+
                 }
             }
         }
@@ -42,7 +42,7 @@ impl_native_enum!(
     Eq => "==",
     Less => "<",
     Floor => "floor",
-    Exit => "exit"
+    Exit => "exit",
 );
 
 impl fmt::Display for Native {

@@ -81,7 +81,7 @@ Macros are defined using the `=` operator, which pops two symbols off the stack 
 n put   # prints "5"
 ```
 
-**Note:** This this works with every\* pair of symbols.
+**Note:** This works with every\* pair of symbols.
 ```py
 2 4 =   # 4 is now 2
 1 4 +   # calculates 1 + 4, which is 3, because 4 is 2

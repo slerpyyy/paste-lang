@@ -57,13 +57,13 @@ impl<'a> Lexer<'a> {
         Some(tok)
     }
 
-    fn text(&mut self) -> Option<Token<'a>> {
+    fn munch<P>(&mut self, predicate: P) -> Option<Token<'a>>
+    where P: Fn(char) -> bool {
         let start = self.mark;
         let mut len = 0;
 
         while let Some(ch) = self.curr {
-            if ch.is_whitespace()
-            || matches!(ch, '{' | '}' | '(' | ')' | '"' | ';' | '\'' | '#') {
+            if !predicate(ch) {
                 break;
             }
 
@@ -76,20 +76,9 @@ impl<'a> Lexer<'a> {
 
     fn string(&mut self) -> Option<Token<'a>> {
         self.read_next();
-        let start = self.mark;
-        let mut len = 0;
-
-        while let Some(c) = self.curr {
-            if c == '"' {
-                break;
-            }
-
-            self.read_next();
-            len += 1;
-        }
-
+        let tok_opt = self.munch(|c| c != '"');
         self.read_next();
-        Self::finalize(&start[..len])
+        tok_opt
     }
 
     fn finalize(raw: &'a str) -> Option<Token<'a>> {
@@ -116,7 +105,10 @@ impl<'a> Iterator for Lexer<'a> {
             ';'  => self.single(Token::SemiColon),
             '\'' => self.single(Token::Tick),
             '"'  => self.string(),
-            _    => self.text(),
+            _    => self.munch(|ch| {
+                !ch.is_whitespace()
+                && !matches!(ch, '{' | '}' | '(' | ')' | '"' | ';' | '\'' | '#')
+            }),
         }
     }
 }

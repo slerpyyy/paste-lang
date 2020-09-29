@@ -27,11 +27,15 @@ impl fmt::Display for Evaluator {
 
 macro_rules! pop_stack {
     ($self:ident, $($var:ident),*) => {
-        #[allow(unused_variables)]
-        $self.stack_assert(0 $(+ {let $var = 0; 1})*)?;
-
+        $self.stack_assert(pop_stack!(@COUNT; $($var),*))?;
         $(let $var = $self.stack.pop().unwrap();)*
     };
+
+    (@COUNT; $($var:ident),*) => {
+        <[()]>::len(&[$(pop_stack!(@SUBST; $var)),*])
+    };
+
+    (@SUBST; $_i:ident) => { () };
 }
 
 impl Evaluator {
