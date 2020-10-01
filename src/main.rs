@@ -6,14 +6,10 @@ use std::io::prelude::*;
 use std::process;
 use std::str;
 
-mod eval;
-mod lex;
-mod parse;
-
-use crate::eval::*;
-use crate::lex::*;
-use crate::parse::*;
 use io::Write;
+use paste::eval::*;
+use paste::lex::*;
+use paste::parse::*;
 
 fn show_usage() {
     println!("Usage: paste [OPTIONS] INPUT")

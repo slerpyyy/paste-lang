@@ -1,6 +1,8 @@
 use noisy_float::prelude::*;
+use std::collections::HashSet;
 use std::fmt;
 use std::hash::*;
+use std::rc::Rc;
 
 use crate::lex::*;
 
@@ -56,9 +58,15 @@ pub enum Sym {
     Native(Native),
     Int(i64),
     Float(R64),
-    Text(String),
-    Block(Vec<Sym>),
+    Text(Rc<str>),
+    Block(Rc<[Sym]>),
     Defer(Box<Sym>),
+}
+
+impl Sym {
+    pub fn text(s: impl Into<Rc<str>>) -> Self {
+        Self::Text(s.into())
+    }
 }
 
 impl fmt::Display for Sym {
@@ -76,7 +84,7 @@ impl fmt::Display for Sym {
             }
             Sym::Block(s) => {
                 write!(f, "{{ ")?;
-                for sym in s {
+                for sym in s.iter() {
                     write!(f, "{} ", sym)?;
                 }
                 write!(f, "}}")
@@ -89,17 +97,23 @@ impl fmt::Display for Sym {
 pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
     let base = (Vec::new(), 0, false);
     let mut stack = vec![base];
+    let mut symbol_cache = HashSet::<Rc<str>>::new();
 
     for token in lexer {
         let (out, defer_level, _) = stack.last_mut().ok_or("too many closing brackets")?;
 
         match token {
             Token::Text(s) => {
-                if let Some(n) = Native::from_str(s) {
-                    out.push(Sym::Native(n));
+                let sym = if let Some(n) = Native::from_str(s) {
+                    Sym::Native(n)
+                } else if let Some(cached) = symbol_cache.get(s) {
+                    Sym::Text(cached.clone())
                 } else {
-                    out.push(Sym::Text(s.into()));
-                }
+                    let s: Rc<str> = s.into();
+                    symbol_cache.insert(s.clone());
+                    Sym::Text(s)
+                };
+                out.push(sym);
             }
             Token::Int(i) => {
                 out.push(Sym::Int(i));
@@ -137,7 +151,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
                     .last_mut()
                     .ok_or("closing bracket without a friend")?
                     .0
-                    .push(Sym::Block(inner));
+                    .push(Sym::Block(inner.into()));
             }
             Token::Tick => {
                 let sym = out.pop().ok_or("tick without a symbol")?;
@@ -174,7 +188,6 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lex::*;
 
     #[test]
     fn parse_simple() {

@@ -1,12 +1,9 @@
 use crate::lex::*;
 use crate::parse::*;
 use noisy_float::prelude::*;
+use std::collections::{HashMap, VecDeque};
 use std::io::{Read, Write};
-use std::process;
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt,
-};
+use std::{fmt, process};
 
 #[derive(Debug, Clone)]
 pub struct Evaluator {
@@ -168,11 +165,17 @@ impl Evaluator {
             Native::Put => {
                 pop_stack!(self, sym);
 
-                let buffer = match sym {
-                    Sym::Text(s) => s,
-                    Sym::Int(s) => format!("{}", s),
-                    Sym::Float(s) => format!("{}", s),
-                    s => format!("{:?}", s),
+                let string;
+                let buffer = match &sym {
+                    Sym::Text(s) => s.as_ref(),
+                    x => {
+                        string = match x {
+                            Sym::Int(s) => format!("{}", s),
+                            Sym::Float(s) => format!("{}", s),
+                            s => format!("{:?}", s),
+                        };
+                        &string
+                    }
                 };
 
                 output
@@ -183,29 +186,19 @@ impl Evaluator {
             Native::Add | Native::Sub | Native::Mul | Native::Div | Native::Eq | Native::Less => {
                 pop_stack!(self, a, b);
 
+                #[inline]
+                fn concat(a: impl fmt::Display, b: impl fmt::Display) -> String {
+                    format!("{}{}", a, b)
+                }
+
                 let c = match (sym, a, b) {
-                    (Native::Add, Sym::Text(mut x), Sym::Text(y)) => {
-                        x.push_str(y.as_str());
-                        Sym::Text(x)
-                    }
-                    (Native::Add, Sym::Text(mut s), Sym::Int(y)) => {
-                        s.push_str(y.to_string().as_str());
-                        Sym::Text(s)
-                    }
-                    (Native::Add, Sym::Text(mut s), Sym::Float(y)) => {
-                        s.push_str(y.to_string().as_str());
-                        Sym::Text(s)
-                    }
-                    (Native::Add, Sym::Int(x), Sym::Text(mut s)) => {
-                        s.push_str(x.to_string().as_str());
-                        Sym::Text(s)
-                    }
+                    (Native::Add, Sym::Text(x), Sym::Text(y)) => Sym::text(concat(x, y)),
+                    (Native::Add, Sym::Text(s), Sym::Int(y)) => Sym::text(concat(s, y)),
+                    (Native::Add, Sym::Text(s), Sym::Float(y)) => Sym::text(concat(s, y)),
+                    (Native::Add, Sym::Int(x), Sym::Text(s)) => Sym::text(concat(x, s)),
                     (Native::Add, Sym::Int(x), Sym::Int(y)) => Sym::Int(x + y),
                     (Native::Add, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) + y),
-                    (Native::Add, Sym::Float(x), Sym::Text(mut s)) => {
-                        s.push_str(x.to_string().as_str());
-                        Sym::Text(s)
-                    }
+                    (Native::Add, Sym::Float(x), Sym::Text(s)) => Sym::text(concat(x, s)),
                     (Native::Add, Sym::Float(x), Sym::Int(y)) => Sym::Float(x + r64(y as _)),
                     (Native::Add, Sym::Float(x), Sym::Float(y)) => Sym::Float(x + y),
 
@@ -300,23 +293,25 @@ impl Evaluator {
     {
         let sym_opt = self.work.pop_front().map(|old| self.macro_replace(old));
 
-        match sym_opt {
-            Some(Sym::Native(n)) => {
+        let sym = match sym_opt {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+
+        match sym {
+            Sym::Native(n) => {
                 if let e @ Err(_) = self.eval_native(n, input, output) {
-                    // SAFETY: sym_opt is guarantied to be some
-                    // because of the outer match
-                    self.work.push_front(sym_opt.unwrap());
+                    self.work.push_front(sym);
                     return e;
                 }
             }
-            Some(Sym::Block(s)) => {
+            Sym::Block(s) => {
                 s.iter()
                     .rev()
                     .for_each(|sym| self.work.push_front(sym.clone()));
             }
-            Some(Sym::Defer(s)) => self.stack.push(*s),
-            Some(s) => self.stack.push(s),
-            None => return Ok(()),
+            Sym::Defer(s) => self.stack.push(*s),
+            s => self.stack.push(s),
         }
 
         Ok(())
@@ -350,8 +345,6 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::lex::*;
-    use crate::parse::*;
     use std::io::*;
 
     fn eval_helper(code: &str, expected: &str) {
