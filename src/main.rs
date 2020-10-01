@@ -1,19 +1,15 @@
 #![warn(clippy::all)]
+use pico_args::Arguments;
+use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::fs::File;
-use std::str;
 use std::process;
-use pico_args::Arguments;
+use std::str;
 
-mod lex;
-mod parse;
-mod eval;
-
-use crate::lex::*;
-use crate::parse::*;
-use crate::eval::*;
 use io::Write;
+use paste::eval::*;
+use paste::lex::*;
+use paste::parse::*;
 
 fn show_usage() {
     println!("Usage: paste [OPTIONS] INPUT")
@@ -22,7 +18,7 @@ fn show_usage() {
 fn show_help() {
     show_usage();
     println!(
-"
+        "
 An esoteric programming language build around macros
 
 Options:
@@ -48,14 +44,12 @@ fn main() {
 
     // init evaluator
     let mut paste = Evaluator::with_std();
-    paste.run(&mut io::empty(), &mut io::sink())
-        .unwrap();
+    paste.run(&mut io::empty(), &mut io::sink()).unwrap();
 
     // load scripts
     let mut no_script = true;
     for filename in args.free().unwrap() {
-        let mut file = File::open(filename)
-            .expect("failed to open file");
+        let mut file = File::open(filename).expect("failed to open file");
 
         let mut content = String::new();
         file.read_to_string(&mut content)
@@ -92,8 +86,10 @@ fn main() {
 
             if !output.is_empty() {
                 newline = true;
-                print!("{}", str::from_utf8(&output)
-                    .expect("failed to read output"));
+                print!(
+                    "{}",
+                    str::from_utf8(&output).expect("failed to read output")
+                );
             }
         }
 
@@ -114,7 +110,8 @@ fn main() {
         io::stdout().flush().unwrap();
 
         let mut buffer = String::new();
-        io::stdin().read_line(&mut buffer)
+        io::stdin()
+            .read_line(&mut buffer)
             .expect("failed to read input");
 
         // append to program

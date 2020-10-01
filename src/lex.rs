@@ -58,7 +58,9 @@ impl<'a> Lexer<'a> {
     }
 
     fn munch<P>(&mut self, predicate: P) -> Option<Token<'a>>
-    where P: Fn(char) -> bool {
+    where
+        P: Fn(char) -> bool,
+    {
         let start = self.mark;
         let mut len = 0;
 
@@ -98,16 +100,15 @@ impl<'a> Iterator for Lexer<'a> {
         self.comments();
 
         match self.curr? {
-            '{'  => self.single(Token::LeftCurly),
-            '}'  => self.single(Token::RightCurly),
-            '('  => self.single(Token::LeftParen),
-            ')'  => self.single(Token::RightParen),
-            ';'  => self.single(Token::SemiColon),
+            '{' => self.single(Token::LeftCurly),
+            '}' => self.single(Token::RightCurly),
+            '(' => self.single(Token::LeftParen),
+            ')' => self.single(Token::RightParen),
+            ';' => self.single(Token::SemiColon),
             '\'' => self.single(Token::Tick),
-            '"'  => self.string(),
-            _    => self.munch(|ch| {
-                !ch.is_whitespace()
-                && !matches!(ch, '{' | '}' | '(' | ')' | '"' | ';' | '\'' | '#')
+            '"' => self.string(),
+            _ => self.munch(|ch| {
+                !ch.is_whitespace() && !matches!(ch, '{' | '}' | '(' | ')' | '"' | ';' | '\'' | '#')
             }),
         }
     }
@@ -131,44 +132,47 @@ mod test {
     fn lex_simple() {
         let code = "test # abc\n { \"hello\" ;put do }";
         let res = lex(code).collect::<Vec<_>>();
-        assert_eq!(res, vec![
-            Token::Text("test"),
-            Token::LeftCurly,
-            Token::Text("hello"),
-            Token::SemiColon,
-            Token::Text("put"),
-            Token::Text("do"),
-            Token::RightCurly,
-        ]);
+        assert_eq!(
+            res,
+            vec![
+                Token::Text("test"),
+                Token::LeftCurly,
+                Token::Text("hello"),
+                Token::SemiColon,
+                Token::Text("put"),
+                Token::Text("do"),
+                Token::RightCurly,
+            ]
+        );
     }
 
     #[test]
     fn lex_squished() {
         let code = "aaa;{test{hello};put do}do";
         let res = lex(code).collect::<Vec<_>>();
-        assert_eq!(res, vec![
-            Token::Text("aaa"),
-            Token::SemiColon,
-            Token::LeftCurly,
-            Token::Text("test"),
-            Token::LeftCurly,
-            Token::Text("hello"),
-            Token::RightCurly,
-            Token::SemiColon,
-            Token::Text("put"),
-            Token::Text("do"),
-            Token::RightCurly,
-            Token::Text("do"),
-        ]);
+        assert_eq!(
+            res,
+            vec![
+                Token::Text("aaa"),
+                Token::SemiColon,
+                Token::LeftCurly,
+                Token::Text("test"),
+                Token::LeftCurly,
+                Token::Text("hello"),
+                Token::RightCurly,
+                Token::SemiColon,
+                Token::Text("put"),
+                Token::Text("do"),
+                Token::RightCurly,
+                Token::Text("do"),
+            ]
+        );
     }
 
     #[test]
     fn lex_comments() {
         let code = "# comment 1\n# comment 2\naaa# comment 3\n bbb #comment 4";
         let res = lex(code).collect::<Vec<_>>();
-        assert_eq!(res, vec![
-            Token::Text("aaa"),
-            Token::Text("bbb"),
-        ]);
+        assert_eq!(res, vec![Token::Text("aaa"), Token::Text("bbb"),]);
     }
 }

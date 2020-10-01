@@ -1,9 +1,9 @@
-use std::io::{Read, Write};
-use std::process;
-use std::{fmt, collections::{HashMap, VecDeque}};
-use noisy_float::prelude::*;
-use crate::parse::*;
 use crate::lex::*;
+use crate::parse::*;
+use noisy_float::prelude::*;
+use std::collections::{HashMap, VecDeque};
+use std::io::{Read, Write};
+use std::{fmt, process};
 
 #[derive(Debug, Clone)]
 pub struct Evaluator {
@@ -74,15 +74,20 @@ impl Evaluator {
         if len > self.stack.len() {
             return Err(format!(
                 "expected {} items on the stack, found {}",
-                len, self.stack.len()
-            ))
+                len,
+                self.stack.len()
+            ));
         }
 
         Ok(())
     }
 
-    fn eval_native<R, W>(&mut self, sym: Native, _input: &mut R, output: &mut W) -> Result<(), String>
-    where R: Read, W: Write {
+    fn eval_native(
+        &mut self,
+        sym: Native,
+        _input: &mut dyn Read,
+        output: &mut dyn Write,
+    ) -> Result<(), String> {
         match sym {
             Native::Assign => {
                 pop_stack!(self, key, val);
@@ -90,12 +95,12 @@ impl Evaluator {
                 if key != val && key != Sym::Text("_".into()) {
                     self.macros.insert(key, val);
                 }
-            },
+            }
 
             Native::Do => {
                 pop_stack!(self, x);
                 self.work.push_front(x);
-            },
+            }
 
             Native::Tern => {
                 pop_stack!(self, else_stmt, then_stmt, cond);
@@ -107,10 +112,10 @@ impl Evaluator {
                         self.stack.push(cond);
                         self.stack.push(then_stmt);
                         self.stack.push(else_stmt);
-                        return Err("invalid condition".into())
-                    },
+                        return Err("invalid condition".into());
+                    }
                 }
-            },
+            }
 
             Native::While => {
                 pop_stack!(self, stmt, cond);
@@ -121,14 +126,14 @@ impl Evaluator {
                         self.work.push_front(Sym::Native(Native::While));
                         self.work.push_front(Sym::Defer(Box::new(stmt.clone())));
                         self.work.push_front(stmt);
-                    },
+                    }
                     _ => {
                         self.stack.push(cond);
                         self.stack.push(stmt);
-                        return Err("invalid condition".into())
-                    },
+                        return Err("invalid condition".into());
+                    }
                 }
-            },
+            }
 
             Native::Copy => {
                 pop_stack!(self, num);
@@ -144,75 +149,82 @@ impl Evaluator {
                         for i in len.saturating_sub(amount as _)..len {
                             self.stack.push(self.stack[i].clone());
                         }
-                    },
+                    }
 
                     _ => {
                         self.stack.push(num);
-                        return Err("invalid copy".into())
-                    },
+                        return Err("invalid copy".into());
+                    }
                 }
-            },
+            }
 
             Native::Put => {
                 pop_stack!(self, sym);
 
-                let buffer = match sym {
-                    Sym::Text(s) => s,
-                    Sym::Int(s) => format!("{}", s),
-                    Sym::Float(s) => format!("{}", s),
-                    s => format!("{:?}", s),
+                let string;
+                let buffer = match &sym {
+                    Sym::Text(s) => s.as_ref(),
+                    x => {
+                        string = match x {
+                            Sym::Int(s) => format!("{}", s),
+                            Sym::Float(s) => format!("{}", s),
+                            s => format!("{:?}", s),
+                        };
+                        &string
+                    }
                 };
 
-                output.write(buffer.as_bytes())
+                output
+                    .write(buffer.as_bytes())
                     .map_err(|_| "failed to write to output")?;
-            },
+            }
 
-            Native::Add |
-            Native::Sub |
-            Native::Mul |
-            Native::Div |
-            Native::Eq  |
-            Native::Less => {
+            Native::Add | Native::Sub | Native::Mul | Native::Div | Native::Eq | Native::Less => {
                 pop_stack!(self, a, b);
 
+                #[inline]
+                fn concat(a: impl fmt::Display, b: impl fmt::Display) -> String {
+                    format!("{}{}", a, b)
+                }
+
                 let c = match (sym, a, b) {
-                    (Native::Add, Sym::Text(mut x), Sym::Text(y)) => { x.push_str(y.as_str()); Sym::Text(x) },
-                    (Native::Add, Sym::Text(mut s), Sym::Int(y)) => { s.push_str(y.to_string().as_str()); Sym::Text(s) },
-                    (Native::Add, Sym::Text(mut s), Sym::Float(y)) => { s.push_str(y.to_string().as_str()); Sym::Text(s) },
-                    (Native::Add, Sym::Int(x), Sym::Text(mut s)) => { s.push_str(x.to_string().as_str()); Sym::Text(s) },
-                    (Native::Add, Sym::Int(x), Sym::Int(y)) => { Sym::Int(x + y) },
-                    (Native::Add, Sym::Int(x), Sym::Float(y)) => { Sym::Float(r64(x as _) + y) },
-                    (Native::Add, Sym::Float(x), Sym::Text(mut s)) => { s.push_str(x.to_string().as_str()); Sym::Text(s) },
-                    (Native::Add, Sym::Float(x), Sym::Int(y)) => { Sym::Float(x + r64(y as _)) },
-                    (Native::Add, Sym::Float(x), Sym::Float(y)) => { Sym::Float(x + y) },
+                    (Native::Add, Sym::Text(x), Sym::Text(y)) => Sym::text(concat(x, y)),
+                    (Native::Add, Sym::Text(s), Sym::Int(y)) => Sym::text(concat(s, y)),
+                    (Native::Add, Sym::Text(s), Sym::Float(y)) => Sym::text(concat(s, y)),
+                    (Native::Add, Sym::Int(x), Sym::Text(s)) => Sym::text(concat(x, s)),
+                    (Native::Add, Sym::Int(x), Sym::Int(y)) => Sym::Int(x + y),
+                    (Native::Add, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) + y),
+                    (Native::Add, Sym::Float(x), Sym::Text(s)) => Sym::text(concat(x, s)),
+                    (Native::Add, Sym::Float(x), Sym::Int(y)) => Sym::Float(x + r64(y as _)),
+                    (Native::Add, Sym::Float(x), Sym::Float(y)) => Sym::Float(x + y),
 
-                    (Native::Sub, Sym::Int(x), Sym::Int(y)) => { Sym::Int(x - y) },
-                    (Native::Sub, Sym::Int(x), Sym::Float(y)) => { Sym::Float(r64(x as _) - y) },
-                    (Native::Sub, Sym::Float(x), Sym::Int(y)) => { Sym::Float(x - r64(y as _)) },
-                    (Native::Sub, Sym::Float(x), Sym::Float(y)) => { Sym::Float(x - y) },
+                    (Native::Sub, Sym::Int(x), Sym::Int(y)) => Sym::Int(x - y),
+                    (Native::Sub, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) - y),
+                    (Native::Sub, Sym::Float(x), Sym::Int(y)) => Sym::Float(x - r64(y as _)),
+                    (Native::Sub, Sym::Float(x), Sym::Float(y)) => Sym::Float(x - y),
 
-                    (Native::Mul, Sym::Int(x), Sym::Int(y)) => { Sym::Int(x * y) },
-                    (Native::Mul, Sym::Int(x), Sym::Float(y)) => { Sym::Float(r64(x as _) * y) },
-                    (Native::Mul, Sym::Float(x), Sym::Int(y)) => { Sym::Float(x * r64(y as _)) },
-                    (Native::Mul, Sym::Float(x), Sym::Float(y)) => { Sym::Float(x * y) },
+                    (Native::Mul, Sym::Int(x), Sym::Int(y)) => Sym::Int(x * y),
+                    (Native::Mul, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) * y),
+                    (Native::Mul, Sym::Float(x), Sym::Int(y)) => Sym::Float(x * r64(y as _)),
+                    (Native::Mul, Sym::Float(x), Sym::Float(y)) => Sym::Float(x * y),
 
-                    (Native::Div, Sym::Int(x), Sym::Int(y)) => { Sym::Int(x / y) },
-                    (Native::Div, Sym::Int(x), Sym::Float(y)) => { Sym::Float(r64(x as _) / y) },
-                    (Native::Div, Sym::Float(x), Sym::Int(y)) => { Sym::Float(x / r64(y as _)) },
-                    (Native::Div, Sym::Float(x), Sym::Float(y)) => { Sym::Float(x / y) },
+                    (Native::Div, Sym::Int(x), Sym::Int(y)) => Sym::Int(x / y),
+                    (Native::Div, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) / y),
+                    (Native::Div, Sym::Float(x), Sym::Int(y)) => Sym::Float(x / r64(y as _)),
+                    (Native::Div, Sym::Float(x), Sym::Float(y)) => Sym::Float(x / y),
 
-                    (Native::Eq, x, y) => { Sym::Int((x == y) as _) },
+                    (Native::Eq, x, y) => Sym::Int((x == y) as _),
 
-                    (Native::Less, Sym::Int(x), Sym::Int(y)) => { Sym::Int((x < y) as _) },
-                    (Native::Less, Sym::Int(x), Sym::Float(y)) => { Sym::Int((r64(x as _) < y) as _) },
-                    (Native::Less, Sym::Float(x), Sym::Int(y)) => { Sym::Int((x < r64(y as _)) as _) },
-                    (Native::Less, Sym::Float(x), Sym::Float(y)) => { Sym::Int((x < y) as _) },
+                    (Native::Less, Sym::Int(x), Sym::Int(y)) => Sym::Int((x < y) as _),
+                    (Native::Less, Sym::Int(x), Sym::Float(y)) => Sym::Int((r64(x as _) < y) as _),
+                    (Native::Less, Sym::Float(x), Sym::Int(y)) => Sym::Int((x < r64(y as _)) as _),
+                    (Native::Less, Sym::Float(x), Sym::Float(y)) => Sym::Int((x < y) as _),
 
                     (_, a, b) => {
                         self.stack.push(b);
                         self.stack.push(a);
-                        return Err("operation is undefined".into())
-                    },
+                        return Err("operation is undefined".into());
+                    }
                 };
 
                 self.stack.push(c);
@@ -223,15 +235,13 @@ impl Evaluator {
 
                 match num {
                     Sym::Int(_) => self.stack.push(num),
-                    Sym::Float(x) => {
-                        self.stack.push(Sym::Int(x.floor().raw() as _))
-                    },
+                    Sym::Float(x) => self.stack.push(Sym::Int(x.floor().raw() as _)),
                     _ => {
                         self.stack.push(num);
-                        return Err("operation is undefined".into())
-                    },
+                        return Err("operation is undefined".into());
+                    }
                 }
-            },
+            }
 
             Native::Exit => {
                 let code = match self.stack.pop() {
@@ -240,15 +250,14 @@ impl Evaluator {
                 };
 
                 process::exit(code)
-            },
+            }
         }
 
         Ok(())
     }
 
     fn macro_replace(&mut self, sym: Sym) -> Sym {
-        if !self.macros.contains_key(&sym)
-        || matches!(sym, Sym::Defer(_)) {
+        if !self.macros.contains_key(&sym) || matches!(sym, Sym::Defer(_)) {
             return sym;
         }
 
@@ -273,35 +282,34 @@ impl Evaluator {
         self.work.is_empty()
     }
 
-    pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
-    where R: Read, W: Write {
-        let sym_opt = self.work.pop_front()
-            .map(|old| self.macro_replace(old));
+    pub fn step(&mut self, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
+        let sym_opt = self.work.pop_front().map(|old| self.macro_replace(old));
 
-        match sym_opt {
-            Some(Sym::Native(n)) => {
+        let sym = match sym_opt {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+
+        match sym {
+            Sym::Native(n) => {
                 if let e @ Err(_) = self.eval_native(n, input, output) {
-                    // SAFETY: sym_opt is guarantied to be some
-                    // because of the outer match
-                    self.work.push_front(sym_opt.unwrap());
+                    self.work.push_front(sym);
                     return e;
                 }
-            },
-            Some(Sym::Block(s)) => {
-                s.iter().rev().for_each(
-                    |sym| self.work.push_front(sym.clone())
-                );
-            },
-            Some(Sym::Defer(s)) => self.stack.push(*s),
-            Some(s) => self.stack.push(s),
-            None => return Ok(()),
+            }
+            Sym::Block(s) => {
+                s.iter()
+                    .rev()
+                    .for_each(|sym| self.work.push_front(sym.clone()));
+            }
+            Sym::Defer(s) => self.stack.push(*s),
+            s => self.stack.push(s),
         }
 
         Ok(())
     }
 
-    pub fn run<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
-    where R: Read, W: Write {
+    pub fn run(&mut self, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
         while !self.done() {
             self.step(input, output)?;
         }
@@ -310,26 +318,22 @@ impl Evaluator {
     }
 }
 
-#[allow(dead_code)]
-fn eval<R, W>(prog: Vec<Sym>, input: &mut R, output: &mut W) -> Result<(), String>
-where R: Read, W: Write {
-    let mut eval = Evaluator::with_std();
-    eval.extend_program(prog);
-    eval.run(input, output)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod test {
-    use std::io::*;
-    use crate::lex::*;
-    use crate::parse::*;
     use super::*;
+    use std::io;
+
+    fn eval(prog: Vec<Sym>, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
+        let mut eval = Evaluator::with_std();
+        eval.extend_program(prog);
+        eval.run(input, output)?;
+        Ok(())
+    }
 
     fn eval_helper(code: &str, expected: &str) {
         let prog = parse(lex(code)).unwrap();
         let mut output = Vec::new();
-        eval(prog, &mut empty(), &mut output).unwrap();
+        eval(prog, &mut io::empty(), &mut output).unwrap();
         assert_eq!(output.as_slice(), expected.as_bytes());
     }
 

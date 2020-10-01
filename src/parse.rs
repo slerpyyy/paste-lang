@@ -1,6 +1,8 @@
+use noisy_float::prelude::*;
+use std::collections::HashSet;
 use std::fmt;
 use std::hash::*;
-use noisy_float::prelude::*;
+use std::rc::Rc;
 
 use crate::lex::*;
 
@@ -56,9 +58,15 @@ pub enum Sym {
     Native(Native),
     Int(i64),
     Float(R64),
-    Text(String),
-    Block(Vec<Sym>),
+    Text(Rc<str>),
+    Block(Rc<[Sym]>),
     Defer(Box<Sym>),
+}
+
+impl Sym {
+    pub fn text(s: impl Into<Rc<str>>) -> Self {
+        Self::Text(s.into())
+    }
 }
 
 impl fmt::Display for Sym {
@@ -73,14 +81,14 @@ impl fmt::Display for Sym {
                 } else {
                     write!(f, "{}", s)
                 }
-            },
+            }
             Sym::Block(s) => {
                 write!(f, "{{ ")?;
-                for sym in s {
+                for sym in s.iter() {
                     write!(f, "{} ", sym)?;
                 }
                 write!(f, "}}")
-            },
+            }
             Sym::Defer(s) => write!(f, ";{}", *s),
         }
     }
@@ -89,37 +97,40 @@ impl fmt::Display for Sym {
 pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
     let base = (Vec::new(), 0, false);
     let mut stack = vec![base];
+    let mut symbol_cache = HashSet::<Rc<str>>::new();
 
     for token in lexer {
-        let (out, defer_level, _) = stack.last_mut()
-            .ok_or("too many closing brackets")?;
+        let (out, defer_level, _) = stack.last_mut().ok_or("too many closing brackets")?;
 
         match token {
             Token::Text(s) => {
-                if let Some(n) = Native::from_str(s) {
-                    out.push(Sym::Native(n));
+                let sym = if let Some(n) = Native::from_str(s) {
+                    Sym::Native(n)
+                } else if let Some(cached) = symbol_cache.get(s) {
+                    Sym::Text(cached.clone())
                 } else {
-                    out.push(Sym::Text(s.into()));
-                }
-            },
+                    let s: Rc<str> = s.into();
+                    symbol_cache.insert(s.clone());
+                    Sym::Text(s)
+                };
+                out.push(sym);
+            }
             Token::Int(i) => {
                 out.push(Sym::Int(i));
-            },
+            }
             Token::Float(f) => {
                 out.push(Sym::Float(r64(f)));
-            },
+            }
             Token::SemiColon => {
                 *defer_level += 1;
                 continue;
-            },
-            Token::LeftCurly |
-            Token::LeftParen => {
+            }
+            Token::LeftCurly | Token::LeftParen => {
                 let reverse = token == Token::LeftParen;
                 stack.push((Vec::new(), 0, reverse));
                 continue;
-            },
-            Token::RightCurly |
-            Token::RightParen => {
+            }
+            Token::RightCurly | Token::RightParen => {
                 if *defer_level > 0 {
                     return Err("nothing to defer");
                 }
@@ -136,18 +147,19 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
                     inner.reverse();
                 }
 
-                stack.last_mut()
+                stack
+                    .last_mut()
                     .ok_or("closing bracket without a friend")?
-                    .0.push(Sym::Block(inner));
-            },
+                    .0
+                    .push(Sym::Block(inner.into()));
+            }
             Token::Tick => {
                 let sym = out.pop().ok_or("tick without a symbol")?;
                 out.insert(0, sym);
-            },
+            }
         }
 
-        let (out, defer_level, _) = stack.last_mut()
-            .ok_or("too many closing brackets")?;
+        let (out, defer_level, _) = stack.last_mut().ok_or("too many closing brackets")?;
 
         if *defer_level > 0 {
             for _ in 0..*defer_level {
@@ -160,8 +172,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
         }
     }
 
-    let (prog, trailing_defer, _) = stack.pop()
-        .ok_or("opening bracket without a friend")?;
+    let (prog, trailing_defer, _) = stack.pop().ok_or("opening bracket without a friend")?;
 
     if trailing_defer > 0 {
         return Err("trailing defer");
@@ -176,7 +187,6 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
 
 #[cfg(test)]
 mod test {
-    use crate::lex::*;
     use super::*;
 
     #[test]
@@ -184,9 +194,12 @@ mod test {
         let lexer = lex("test { \"hello\" { ;put } do }");
         let prog = parse(lexer).unwrap();
         let result = format!("{:?}", prog);
-        assert_eq!(result, "[Text(\"test\"), \
+        assert_eq!(
+            result,
+            "[Text(\"test\"), \
             Block([Text(\"hello\"), Block([Defer(Native(Put))]), \
-            Native(Do)])]");
+            Native(Do)])]"
+        );
     }
 
     #[test]
@@ -194,9 +207,12 @@ mod test {
         let lexer = lex("1 ;{ ;{ hello } do ;put do } do");
         let prog = parse(lexer).unwrap();
         let result = format!("{:?}", prog);
-        assert_eq!(result, "[Int(1), \
+        assert_eq!(
+            result,
+            "[Int(1), \
             Defer(Block([Defer(Block([Text(\"hello\")])), Native(Do), \
-            Defer(Native(Put)), Native(Do)])), Native(Do)]");
+            Defer(Native(Put)), Native(Do)])), Native(Do)]"
+        );
     }
 
     #[test]
@@ -204,8 +220,11 @@ mod test {
         let lexer = lex("3 4' (2 +' 3)'' * +");
         let prog = parse(lexer).unwrap();
         let result = format!("{:?}", prog);
-        assert_eq!(result, "[Int(3), Block([Int(3), Int(2), \
-            Native(Add)]), Int(4), Native(Mul), Native(Add)]");
+        assert_eq!(
+            result,
+            "[Int(3), Block([Int(3), Int(2), \
+            Native(Add)]), Int(4), Native(Mul), Native(Add)]"
+        );
     }
 
     #[test]
@@ -213,8 +232,11 @@ mod test {
         let lexer = lex("(1 +' (2 *' 3)) put");
         let prog = parse(lexer).unwrap();
         let result = format!("{:?}", prog);
-        assert_eq!(result, "[Block([Block([Int(3), Int(2), \
-            Native(Mul)]), Int(1), Native(Add)]), Native(Put)]");
+        assert_eq!(
+            result,
+            "[Block([Block([Int(3), Int(2), \
+            Native(Mul)]), Int(1), Native(Add)]), Native(Put)]"
+        );
     }
 
     #[test]
