@@ -82,16 +82,12 @@ impl Evaluator {
         Ok(())
     }
 
-    fn eval_native<R, W>(
+    fn eval_native(
         &mut self,
         sym: Native,
-        _input: &mut R,
-        output: &mut W,
-    ) -> Result<(), String>
-    where
-        R: Read,
-        W: Write,
-    {
+        _input: &mut dyn Read,
+        output: &mut dyn Write,
+    ) -> Result<(), String> {
         match sym {
             Native::Assign => {
                 pop_stack!(self, key, val);
@@ -286,11 +282,7 @@ impl Evaluator {
         self.work.is_empty()
     }
 
-    pub fn step<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
-    where
-        R: Read,
-        W: Write,
-    {
+    pub fn step(&mut self, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
         let sym_opt = self.work.pop_front().map(|old| self.macro_replace(old));
 
         let sym = match sym_opt {
@@ -317,11 +309,7 @@ impl Evaluator {
         Ok(())
     }
 
-    pub fn run<R, W>(&mut self, input: &mut R, output: &mut W) -> Result<(), String>
-    where
-        R: Read,
-        W: Write,
-    {
+    pub fn run(&mut self, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
         while !self.done() {
             self.step(input, output)?;
         }
@@ -330,27 +318,22 @@ impl Evaluator {
     }
 }
 
-#[allow(dead_code)]
-fn eval<R, W>(prog: Vec<Sym>, input: &mut R, output: &mut W) -> Result<(), String>
-where
-    R: Read,
-    W: Write,
-{
-    let mut eval = Evaluator::with_std();
-    eval.extend_program(prog);
-    eval.run(input, output)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::io::*;
+    use std::io;
+
+    fn eval(prog: Vec<Sym>, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
+        let mut eval = Evaluator::with_std();
+        eval.extend_program(prog);
+        eval.run(input, output)?;
+        Ok(())
+    }
 
     fn eval_helper(code: &str, expected: &str) {
         let prog = parse(lex(code)).unwrap();
         let mut output = Vec::new();
-        eval(prog, &mut empty(), &mut output).unwrap();
+        eval(prog, &mut io::empty(), &mut output).unwrap();
         assert_eq!(output.as_slice(), expected.as_bytes());
     }
 
