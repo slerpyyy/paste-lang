@@ -322,6 +322,7 @@ impl Evaluator {
 mod test {
     use super::*;
     use std::io;
+    use std::str;
 
     fn eval(prog: Vec<Sym>, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
         let mut eval = Evaluator::with_std();
@@ -334,7 +335,8 @@ mod test {
         let prog = parse(lex(code)).unwrap();
         let mut output = Vec::new();
         eval(prog, &mut io::empty(), &mut output).unwrap();
-        assert_eq!(output.as_slice(), expected.as_bytes());
+        let result = str::from_utf8(output.as_slice()).unwrap();
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -385,6 +387,20 @@ mod test {
     }
 
     #[test]
+    fn eval_floor_simple() {
+        let code = "0 \
+        (3.0 2.3 4.5 -7.3 1.7 4.999 5.0) \
+        { 1 ;(put dup floor) while }";
+        eval_helper(code, "324-81450");
+    }
+
+    #[test]
+    fn eval_add_all_the_things() {
+        let code = "(+ + + 1 2 a (+ + 5.2 b 2)) put";
+        eval_helper(code, "3a5.2b2");
+    }
+
+    #[test]
     fn eval_macro_simple() {
         let code = "(5 =' 3) (n =' 5) (put n)";
         eval_helper(code, "3");
@@ -412,6 +428,14 @@ mod test {
     fn eval_while_loop() {
         let code = "0 1 1 1 1 ;(put a) while";
         eval_helper(code, "aaaa");
+    }
+
+    #[test]
+    fn eval_twice_twice() {
+        let code = "\
+        0 5 4 (copy 2) 7 6 (copy 3)
+        1 ;{dup put} while";
+        eval_helper(code, "6746745450");
     }
 
     #[test]
