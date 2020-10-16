@@ -1,12 +1,11 @@
 #![warn(clippy::all)]
 use pico_args::Arguments;
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
-use std::process;
-use std::str;
+use std::{
+    fs::File,
+    io::{self, Read, Write},
+    process, str,
+};
 
-use io::Write;
 use paste::eval::*;
 use paste::lex::*;
 use paste::parse::*;

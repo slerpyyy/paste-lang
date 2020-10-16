@@ -1,4 +1,4 @@
-use std::str::*;
+use std::str::Chars;
 
 #[derive(Debug, PartialEq)]
 pub enum Token<'a> {

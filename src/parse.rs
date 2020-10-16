@@ -1,10 +1,6 @@
-use noisy_float::prelude::*;
-use std::collections::HashSet;
-use std::fmt;
-use std::hash::*;
-use std::rc::Rc;
-
 use crate::lex::*;
+use noisy_float::prelude::{r64, R64};
+use std::{collections::HashSet, fmt, rc::Rc, str::FromStr};
 
 macro_rules! impl_native_enum {
     ($($tok: ident => $text: literal,)+) => {
@@ -13,14 +9,17 @@ macro_rules! impl_native_enum {
             $($tok,)+
         }
 
-        impl Native {
-            pub fn from_str(string: &str) -> Option<Native> {
+        impl FromStr for Native {
+            type Err = ();
+            fn from_str(string: &str) -> Result<Self, Self::Err> {
                 match string {
-                    $($text => Some(Native::$tok),)+
-                    _ => None,
+                    $($text => Ok(Native::$tok),)+
+                    _ => Err(()),
                 }
             }
+        }
 
+        impl Native {
             pub fn to_str(&self) -> &'static str {
                 match self {
                     $(Native::$tok => $text,)+
@@ -104,7 +103,7 @@ pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
 
         match token {
             Token::Text(s) => {
-                let sym = if let Some(n) = Native::from_str(s) {
+                let sym = if let Ok(n) = Native::from_str(s) {
                     Sym::Native(n)
                 } else if let Some(cached) = symbol_cache.get(s) {
                     Sym::Text(cached.clone())

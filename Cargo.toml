@@ -10,5 +10,5 @@ lto = true
 panic = "abort"
 
 [dependencies]
-noisy_float = "0.1.12"
+noisy_float = "0.1.13"
 pico-args = "0.3.4"

@@ -1,9 +1,12 @@
 use crate::lex::*;
 use crate::parse::*;
 use noisy_float::prelude::*;
-use std::collections::{HashMap, VecDeque};
-use std::io::{Read, Write};
-use std::{fmt, process};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt,
+    io::{Read, Write},
+    process,
+};
 
 #[derive(Debug, Clone)]
 pub struct Evaluator {
@@ -36,6 +39,12 @@ macro_rules! pop_stack {
     };
 
     (@SUBST; $_i:ident) => { () };
+}
+
+impl Default for Evaluator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Evaluator {
