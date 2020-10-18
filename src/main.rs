@@ -107,11 +107,20 @@ fn main() {
         // ask for input
         print!("> ");
         io::stdout().flush().unwrap();
-
         let mut buffer = String::new();
-        io::stdin()
-            .read_line(&mut buffer)
-            .expect("failed to read input");
+
+        loop {
+            io::stdin()
+                .read_line(&mut buffer)
+                .expect("failed to read input");
+
+            if check_complete(lex(buffer.as_str())) != Ok(false) {
+                break;
+            }
+
+            print!(". ");
+            io::stdout().flush().unwrap();
+        }
 
         // append to program
         let tokens = lex(buffer.as_str());
