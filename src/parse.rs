@@ -93,12 +93,37 @@ impl fmt::Display for Sym {
     }
 }
 
-pub fn parse(lexer: Lexer) -> Result<Vec<Sym>, &'static str> {
-    let base = (Vec::new(), 0, false);
-    let mut stack = vec![base];
+pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<bool, &'static str> {
+    let mut stack = Vec::<bool>::new();
+
+    for token in tokens {
+        match token {
+            Token::LeftCurly | Token::LeftParen => {
+                let curly = token == Token::LeftCurly;
+                stack.push(curly)
+            }
+            Token::RightCurly | Token::RightParen => {
+                let curly = token == Token::RightCurly;
+                match stack.pop() {
+                    None =>
+                        return Err("too many closing brackets"),
+                    Some(b) if b != curly =>
+                        return Err("wrong closing brackets"),
+                    _ => {},
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(stack.is_empty())
+}
+
+pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'static str> {
+    let mut stack = vec![(Vec::new(), 0, false)];
     let mut symbol_cache = HashSet::<Rc<str>>::new();
 
-    for token in lexer {
+    for token in tokens {
         let (out, defer_level, _) = stack.last_mut().ok_or("too many closing brackets")?;
 
         match token {
@@ -189,6 +214,38 @@ mod test {
     use super::*;
 
     #[test]
+    fn check_complete_true() {
+        let lexer = lex("test ;{ (;{ put } hello) do } =");
+        let result = check_complete(lexer);
+        assert_eq!(result, Ok(true));
+    }
+
+    #[test]
+    fn check_complete_false() {
+        let lexer = lex("test ;{ (;{ put } hello");
+        let result = check_complete(lexer);
+        assert_eq!(result, Ok(false));
+    }
+
+    #[test]
+    fn check_complete_too_many_closing() {
+        let lexer = lex("{{b} {a}} c}");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn check_complete_bracket_mismatch() {
+        let lexer = lex("( ;a put }");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
+    fn check_complete_sub_zero() {
+        let lexer = lex("{ab}} {{cd}");
+        assert!(parse(lexer).is_err());
+    }
+
+    #[test]
     fn parse_simple() {
         let lexer = lex("test { \"hello\" { ;put } do }");
         let prog = parse(lexer).unwrap();
@@ -257,13 +314,13 @@ mod test {
     }
 
     #[test]
-    fn parse_brackets_not_opening() {
+    fn parse_brackets_too_many_closing() {
         let lexer = lex("{{b} {a}} c}");
         assert!(parse(lexer).is_err());
     }
 
     #[test]
-    fn parse_brackets_mismatch() {
+    fn parse_brackets_bracket_mismatch() {
         let lexer = lex("( ;a put }");
         assert!(parse(lexer).is_err());
     }
