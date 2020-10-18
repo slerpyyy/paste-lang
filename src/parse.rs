@@ -20,6 +20,18 @@ macro_rules! impl_native_enum {
         }
 
         impl Native {
+            /// Returns the representation of a native symbol.
+            ///
+            /// A call to this method always results in a static str.
+            ///
+            /// # Examples
+            /// ```
+            /// # use paste::parse::Native;
+            /// let nat = Native::Assign;
+            ///
+            /// assert_eq!(nat.to_str(), "=");
+            /// ```
+            #[inline]
             pub fn to_str(&self) -> &'static str {
                 match self {
                     $(Native::$tok => $text,)+
@@ -63,6 +75,7 @@ pub enum Sym {
 }
 
 impl Sym {
+    #[inline]
     pub fn text(s: impl Into<Rc<str>>) -> Self {
         Self::Text(s.into())
     }
@@ -93,6 +106,25 @@ impl fmt::Display for Sym {
     }
 }
 
+/// Checks if a token stream is complete and ready to parse.
+///
+/// This function runs through the given token iterator and checks if every
+/// opening bracket has a closing counterpart. Inversely, if the function
+/// returns false, the token stream is not be complete and must be continued
+/// to be able to parse correctly. The function may also result in an error,
+/// if brackets are placed incorrectly.
+///
+/// # Examples
+/// ```
+/// # use paste::{lex::*, parse::*};
+/// let unfinished = check_complete(lex("t ;(put hello"));
+/// let complete = check_complete(lex("t ;(put hello) ="));
+/// let invalid = check_complete(lex("t ;(put hello} ="));
+///
+/// assert_eq!(unfinished, Ok(false));
+/// assert_eq!(complete, Ok(true));
+/// assert!(invalid.is_err());
+/// ```
 pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<bool, &'static str> {
     let mut stack = Vec::<bool>::new();
 
@@ -119,6 +151,10 @@ pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<boo
     Ok(stack.is_empty())
 }
 
+/// Parses a given token stream.
+///
+/// It converts a given token iterator into a vector of symbols, which is
+/// ready to be evaluated.
 pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'static str> {
     let mut stack = vec![(Vec::new(), 0, false)];
     let mut symbol_cache = HashSet::<Rc<str>>::new();

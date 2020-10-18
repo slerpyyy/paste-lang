@@ -48,6 +48,8 @@ impl Default for Evaluator {
 }
 
 impl Evaluator {
+    /// Creates a new empty evaluator.
+    #[inline]
     pub fn new() -> Self {
         Self {
             macros: HashMap::new(),
@@ -56,12 +58,16 @@ impl Evaluator {
         }
     }
 
+    /// Creates a new evaluator with preloaded standard library.
+    #[inline]
     pub fn with_std() -> Self {
         let mut new = Self::new();
         new.load_std();
         new
     }
 
+    /// Loads and evaluated the standard library.
+    #[inline]
     pub fn load_std(&mut self) {
         // SAFETY: The standard library does not change depending
         // on user input and is tested explicitly
@@ -69,12 +75,20 @@ impl Evaluator {
         self.extend_code(std_lib).unwrap();
     }
 
+    /// Extends the program to be evaluated.
+    ///
+    /// The program is given as a &str containing paste source code, which is
+    /// parsed internally. Any errors produced during parsing are forwarded
+    /// in the result.
+    #[inline]
     pub fn extend_code(&mut self, source: &str) -> Result<(), String> {
         let prog = parse(lex(source))?;
         self.work.extend(prog);
         Ok(())
     }
 
+    /// Extends the program to be evaluated.
+    #[inline]
     pub fn extend_program(&mut self, prog: Vec<Sym>) {
         self.work.extend(prog);
     }
@@ -265,6 +279,7 @@ impl Evaluator {
         Ok(())
     }
 
+    #[inline]
     fn macro_replace(&mut self, sym: Sym) -> Sym {
         if !self.macros.contains_key(&sym) || matches!(sym, Sym::Defer(_)) {
             return sym;
@@ -287,10 +302,16 @@ impl Evaluator {
         next
     }
 
+    /// Checks if the evaluator has terminated.
+    ///
+    /// The function returns true if no more symbols are left
+    /// in the work queue and false otherwise.
+    #[inline]
     pub fn done(&self) -> bool {
         self.work.is_empty()
     }
 
+    /// Advances the state of the evaluator by one step.
     pub fn step(&mut self, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
         let sym_opt = self.work.pop_front().map(|old| self.macro_replace(old));
 
@@ -318,12 +339,27 @@ impl Evaluator {
         Ok(())
     }
 
+    /// Runs the evaluator until the program terminates.
+    #[inline]
     pub fn run(&mut self, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
         while !self.done() {
             self.step(input, output)?;
         }
 
         Ok(())
+    }
+
+    /// Runs the evaluator until it terminates or the timeout is reached.
+    #[inline]
+    pub fn run_with_timeout(&mut self, steps: usize, input: &mut dyn Read, output: &mut dyn Write) -> Result<usize, String> {
+        for curr in 0..steps {
+            if self.done() {
+                return Ok(curr);
+            }
+            self.step(input, output)?;
+        }
+
+        Ok(steps)
     }
 }
 
@@ -333,30 +369,31 @@ mod test {
     use std::io;
     use std::str;
 
-    fn eval(prog: Vec<Sym>, input: &mut dyn Read, output: &mut dyn Write) -> Result<(), String> {
-        let mut eval = Evaluator::with_std();
-        eval.extend_program(prog);
-        eval.run(input, output)?;
-        Ok(())
-    }
-
-    fn eval_helper(code: &str, expected: &str) {
+    #[inline]
+    fn eval_helper(code: &str, expected: &str, steps: usize) {
         let prog = parse(lex(code)).unwrap();
         let mut output = Vec::new();
-        eval(prog, &mut io::empty(), &mut output).unwrap();
+
+        let mut eval = Evaluator::with_std();
+        eval.run(&mut io::empty(), &mut io::sink()).unwrap();
+
+        eval.extend_program(prog);
+        eval.run_with_timeout(steps, &mut io::empty(), &mut output).unwrap();
+        assert!(eval.done(), "Evaluator wasn't done yet\n{}", eval);
+
         let result = str::from_utf8(output.as_slice()).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
     fn eval_sanity_check() {
-        eval_helper("", "");
+        eval_helper("", "", 0);
     }
 
     #[test]
     fn eval_hello() {
         let code = "1 ;{ \"hello\" ;put do } if";
-        eval_helper(code, "hello");
+        eval_helper(code, "hello", 20);
     }
 
     #[test]
@@ -364,7 +401,7 @@ mod test {
         let code = "\
         (fib =' ;{;n = 0 1 (n >' 0) ;{xch over + (;n =' (n -' 1)) (n !=' 0)} while pop})
         (put (fib 42))";
-        eval_helper(code, "267914296");
+        eval_helper(code, "267914296", 3000);
     }
 
     #[test]
@@ -372,7 +409,7 @@ mod test {
         let code = "\
         (gcd =' ;{1 ;{(copy 2) < ;xch if over xch - (0 !=' over)} while xch pop})
         (put (35 gcd' 91))";
-        eval_helper(code, "7");
+        eval_helper(code, "7", 600);
     }
 
     #[test]
@@ -380,19 +417,19 @@ mod test {
         let code = "\
         (pow =' ;{;n = ;k = (k >' 1) ;((n pow' (k -' 1)) *' n) ;n ?})
         (0.9 pow' 100) put";
-        eval_helper(code, "0.000026561398887587544");
+        eval_helper(code, "0.000026561398887587544", 6000);
     }
 
     #[test]
     fn eval_do_do_do() {
         let code = "test ;;put do ;;do ;do do do";
-        eval_helper(code, "test");
+        eval_helper(code, "test", 25);
     }
 
     #[test]
     fn eval_quick_maths() {
         let code = "put (9 -' ((3 +' 1) *' 2))'";
-        eval_helper(code, "1");
+        eval_helper(code, "1", 20);
     }
 
     #[test]
@@ -400,43 +437,43 @@ mod test {
         let code = "0 \
         (3.0 2.3 4.5 -7.3 1.7 4.999 5.0) \
         { 1 ;(put dup floor) while }";
-        eval_helper(code, "324-81450");
+        eval_helper(code, "324-81450", 150);
     }
 
     #[test]
     fn eval_add_all_the_things() {
         let code = "(+ + + 1 2 a (+ + 5.2 b 2)) put";
-        eval_helper(code, "3a5.2b2");
+        eval_helper(code, "3a5.2b2", 30);
     }
 
     #[test]
     fn eval_macro_simple() {
         let code = "(5 =' 3) (n =' 5) (put n)";
-        eval_helper(code, "3");
+        eval_helper(code, "3", 20);
     }
 
     #[test]
     fn eval_macro_circle() {
         let code = "(5 =' 3) (3 =' 5) (put 3) (put 5)";
-        eval_helper(code, "33");
+        eval_helper(code, "33", 30);
     }
 
     #[test]
     fn eval_macro_override() {
         let code = "(2 =' 1) (2 =' 3) (1 =' 2) (put 1)";
-        eval_helper(code, "3");
+        eval_helper(code, "3", 30);
     }
 
     #[test]
     fn eval_macro_blocks() {
         let code = "0 1 5 2 3 7 9 ;{ dup put ;b if } b = b";
-        eval_helper(code, "9732510");
+        eval_helper(code, "9732510", 150);
     }
 
     #[test]
     fn eval_while_loop() {
         let code = "0 1 1 1 1 ;(put a) while";
-        eval_helper(code, "aaaa");
+        eval_helper(code, "aaaa", 50);
     }
 
     #[test]
@@ -444,7 +481,7 @@ mod test {
         let code = "\
         0 5 4 (copy 2) 7 6 (copy 3)
         1 ;{dup put} while";
-        eval_helper(code, "6746745450");
+        eval_helper(code, "6746745450", 200);
     }
 
     #[test]
@@ -452,6 +489,6 @@ mod test {
         let code = "\
         (test =' ;{== ;a ;b ? put})
         (test 3 5) (test 4 4)";
-        eval_helper(code, "ba");
+        eval_helper(code, "ba", 50);
     }
 }

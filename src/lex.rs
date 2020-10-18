@@ -13,6 +13,7 @@ pub enum Token<'a> {
     Tick,
 }
 
+#[derive(Debug, Clone)]
 pub struct Lexer<'a> {
     input: Chars<'a>,
     curr: Option<char>,
@@ -20,6 +21,7 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
+    #[inline]
     fn read_next(&mut self) {
         self.mark = self.input.as_str();
         self.curr = self.input.next();
@@ -52,6 +54,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    #[inline]
     fn single(&mut self, tok: Token<'a>) -> Option<Token<'a>> {
         self.read_next();
         Some(tok)
@@ -114,6 +117,11 @@ impl<'a> Iterator for Lexer<'a> {
     }
 }
 
+/// Lexes a given str.
+///
+/// This function takes a &str containing paste source code and returns a
+/// token stream, which is ready to be parsed. The token stream is returned
+/// as a lexer struct, which lazily generates tokens.
 pub fn lex(source: &'_ str) -> Lexer<'_> {
     let mut lexer = Lexer {
         input: source.chars(),
