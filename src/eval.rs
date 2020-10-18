@@ -205,43 +205,38 @@ impl Evaluator {
             Native::Add | Native::Sub | Native::Mul | Native::Div | Native::Eq | Native::Less => {
                 pop_stack!(self, a, b);
 
-                #[inline]
-                fn concat(a: impl fmt::Display, b: impl fmt::Display) -> String {
-                    format!("{}{}", a, b)
-                }
-
                 let c = match (sym, a, b) {
-                    (Native::Add, Sym::Text(x), Sym::Text(y)) => Sym::text(concat(x, y)),
-                    (Native::Add, Sym::Text(s), Sym::Int(y)) => Sym::text(concat(s, y)),
-                    (Native::Add, Sym::Text(s), Sym::Float(y)) => Sym::text(concat(s, y)),
-                    (Native::Add, Sym::Int(x), Sym::Text(s)) => Sym::text(concat(x, s)),
-                    (Native::Add, Sym::Int(x), Sym::Int(y)) => Sym::Int(x + y),
+                    (Native::Add, Sym::Text(x), Sym::Text(y)) => Sym::concat(x, y),
+                    (Native::Add, Sym::Text(s), Sym::Int(y)) => Sym::concat(s, y),
+                    (Native::Add, Sym::Text(s), Sym::Float(y)) => Sym::concat(s, y),
+                    (Native::Add, Sym::Int(x), Sym::Text(s)) => Sym::concat(x, s),
+                    (Native::Add, Sym::Int(x), Sym::Int(y)) => Sym::int(x + y),
                     (Native::Add, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) + y),
-                    (Native::Add, Sym::Float(x), Sym::Text(s)) => Sym::text(concat(x, s)),
+                    (Native::Add, Sym::Float(x), Sym::Text(s)) => Sym::concat(x, s),
                     (Native::Add, Sym::Float(x), Sym::Int(y)) => Sym::Float(x + r64(y as _)),
                     (Native::Add, Sym::Float(x), Sym::Float(y)) => Sym::Float(x + y),
 
-                    (Native::Sub, Sym::Int(x), Sym::Int(y)) => Sym::Int(x - y),
+                    (Native::Sub, Sym::Int(x), Sym::Int(y)) => Sym::int(x - y),
                     (Native::Sub, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) - y),
                     (Native::Sub, Sym::Float(x), Sym::Int(y)) => Sym::Float(x - r64(y as _)),
                     (Native::Sub, Sym::Float(x), Sym::Float(y)) => Sym::Float(x - y),
 
-                    (Native::Mul, Sym::Int(x), Sym::Int(y)) => Sym::Int(x * y),
+                    (Native::Mul, Sym::Int(x), Sym::Int(y)) => Sym::int(x * y),
                     (Native::Mul, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) * y),
                     (Native::Mul, Sym::Float(x), Sym::Int(y)) => Sym::Float(x * r64(y as _)),
                     (Native::Mul, Sym::Float(x), Sym::Float(y)) => Sym::Float(x * y),
 
-                    (Native::Div, Sym::Int(x), Sym::Int(y)) => Sym::Int(x / y),
+                    (Native::Div, Sym::Int(x), Sym::Int(y)) => Sym::int(x / y),
                     (Native::Div, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) / y),
                     (Native::Div, Sym::Float(x), Sym::Int(y)) => Sym::Float(x / r64(y as _)),
                     (Native::Div, Sym::Float(x), Sym::Float(y)) => Sym::Float(x / y),
 
-                    (Native::Eq, x, y) => Sym::Int((x == y) as _),
+                    (Native::Eq, x, y) => Sym::int(x == y),
 
-                    (Native::Less, Sym::Int(x), Sym::Int(y)) => Sym::Int((x < y) as _),
-                    (Native::Less, Sym::Int(x), Sym::Float(y)) => Sym::Int((r64(x as _) < y) as _),
-                    (Native::Less, Sym::Float(x), Sym::Int(y)) => Sym::Int((x < r64(y as _)) as _),
-                    (Native::Less, Sym::Float(x), Sym::Float(y)) => Sym::Int((x < y) as _),
+                    (Native::Less, Sym::Int(x), Sym::Int(y)) => Sym::int(x < y),
+                    (Native::Less, Sym::Int(x), Sym::Float(y)) => Sym::int(r64(x as _) < y),
+                    (Native::Less, Sym::Float(x), Sym::Int(y)) => Sym::int(x < r64(y as _)),
+                    (Native::Less, Sym::Float(x), Sym::Float(y)) => Sym::int(x < y),
 
                     (_, a, b) => {
                         self.stack.push(b);
@@ -351,7 +346,12 @@ impl Evaluator {
 
     /// Runs the evaluator until it terminates or the timeout is reached.
     #[inline]
-    pub fn run_with_timeout(&mut self, steps: usize, input: &mut dyn Read, output: &mut dyn Write) -> Result<usize, String> {
+    pub fn run_with_timeout(
+        &mut self,
+        input: &mut dyn Read,
+        output: &mut dyn Write,
+        steps: usize,
+    ) -> Result<usize, String> {
         for curr in 0..steps {
             if self.done() {
                 return Ok(curr);
@@ -378,7 +378,8 @@ mod test {
         eval.run(&mut io::empty(), &mut io::sink()).unwrap();
 
         eval.extend_program(prog);
-        eval.run_with_timeout(steps, &mut io::empty(), &mut output).unwrap();
+        eval.run_with_timeout(&mut io::empty(), &mut output, steps)
+            .unwrap();
         assert!(eval.done(), "Evaluator wasn't done yet\n{}", eval);
 
         let result = str::from_utf8(output.as_slice()).unwrap();

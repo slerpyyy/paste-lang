@@ -79,6 +79,16 @@ impl Sym {
     pub fn text(s: impl Into<Rc<str>>) -> Self {
         Self::Text(s.into())
     }
+
+    #[inline]
+    pub fn concat(a: impl fmt::Display, b: impl fmt::Display) -> Self {
+        Sym::text(format!("{}{}", a, b))
+    }
+
+    #[inline]
+    pub fn int(n: impl Into<i64>) -> Self {
+        Sym::Int(n.into())
+    }
 }
 
 impl fmt::Display for Sym {
@@ -137,11 +147,9 @@ pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<boo
             Token::RightCurly | Token::RightParen => {
                 let curly = token == Token::RightCurly;
                 match stack.pop() {
-                    None =>
-                        return Err("too many closing brackets"),
-                    Some(b) if b != curly =>
-                        return Err("wrong closing brackets"),
-                    _ => {},
+                    None => return Err("too many closing brackets"),
+                    Some(b) if b != curly => return Err("wrong closing brackets"),
+                    _ => {}
                 }
             }
             _ => {}
