@@ -120,6 +120,21 @@ impl Evaluator {
                 }
             }
 
+            Native::Comma => {
+                pop_stack!(self, block, sym);
+
+                match block {
+                    Sym::Block(vec) => {
+                        let mut vec = vec;
+                        vec.push(sym);
+                        self.stack.push(Sym::Block(vec));
+                    }
+                    s => {
+                        self.stack.push(Sym::Block(vec![s, sym]));
+                    }
+                }
+            }
+
             Native::Do => {
                 pop_stack!(self, x);
                 self.work.push_front(x);
@@ -187,12 +202,8 @@ impl Evaluator {
                 let string;
                 let buffer = match &sym {
                     Sym::Text(s) => s.as_ref(),
-                    x => {
-                        string = match x {
-                            Sym::Int(s) => format!("{}", s),
-                            Sym::Float(s) => format!("{}", s),
-                            s => format!("{:?}", s),
-                        };
+                    s => {
+                        string = format!("{}", s);
                         &string
                     }
                 };

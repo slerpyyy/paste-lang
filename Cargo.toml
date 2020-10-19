@@ -1,5 +1,5 @@
 [package]
-name = "paste"
+name = "paste-lang"
 version = "0.1.0"
 authors = ["slerpy <48803074+slerpyyy@users.noreply.github.com>"]
 edition = "2018"

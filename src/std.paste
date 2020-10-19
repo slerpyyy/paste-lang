@@ -2,10 +2,10 @@
 
 # Stack manipulation:
 ;{ 1 copy } dup =
-;{ ;_ = } pop =
+;{ _ = } pop =
 ;{ ;_x = ;_y = _x _y } xch =
 ;{ 2 copy pop } over =
-;{ ;_x = ;_ = _x } under =
+;{ ;_x = _ = _x } under =
 
 # Unary operators:
 ;{ 1 + } ++ =

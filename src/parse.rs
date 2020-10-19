@@ -26,7 +26,7 @@ macro_rules! impl_native_enum {
             ///
             /// # Examples
             /// ```
-            /// # use paste::parse::Native;
+            /// # use paste_lang::parse::Native;
             /// let nat = Native::Assign;
             ///
             /// assert_eq!(nat.to_str(), "=");
@@ -43,6 +43,7 @@ macro_rules! impl_native_enum {
 
 impl_native_enum!(
     Assign => "=",
+    Comma => ",",
     Do => "do",
     Tern => "?",
     While => "while",
@@ -70,7 +71,7 @@ pub enum Sym {
     Int(i64),
     Float(R64),
     Text(Rc<str>),
-    Block(Rc<[Sym]>),
+    Block(Vec<Sym>),
     Defer(Box<Sym>),
 }
 
@@ -88,6 +89,19 @@ impl Sym {
     #[inline]
     pub fn int(n: impl Into<i64>) -> Self {
         Sym::Int(n.into())
+    }
+
+    #[inline]
+    fn intern_str(s: &str, cache: &mut HashSet<Rc<str>>) -> Sym {
+        if let Ok(n) = Native::from_str(s) {
+            Sym::Native(n)
+        } else if let Some(cached) = cache.get(s) {
+            Sym::Text(cached.clone())
+        } else {
+            let s: Rc<str> = s.into();
+            cache.insert(s.clone());
+            Sym::text(s)
+        }
     }
 }
 
@@ -126,7 +140,7 @@ impl fmt::Display for Sym {
 ///
 /// # Examples
 /// ```
-/// # use paste::{lex::*, parse::*};
+/// # use paste_lang::{lex::*, parse::*};
 /// let unfinished = check_complete(lex("t ;(put hello"));
 /// let complete = check_complete(lex("t ;(put hello) ="));
 /// let invalid = check_complete(lex("t ;(put hello} ="));
@@ -171,17 +185,11 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'
         let (out, defer_level, _) = stack.last_mut().ok_or("too many closing brackets")?;
 
         match token {
-            Token::Text(s) => {
-                let sym = if let Ok(n) = Native::from_str(s) {
-                    Sym::Native(n)
-                } else if let Some(cached) = symbol_cache.get(s) {
-                    Sym::Text(cached.clone())
-                } else {
-                    let s: Rc<str> = s.into();
-                    symbol_cache.insert(s.clone());
-                    Sym::Text(s)
-                };
-                out.push(sym);
+            Token::Raw(s) => {
+                out.push(Sym::intern_str(s, &mut symbol_cache));
+            }
+            Token::String(s) => {
+                out.push(Sym::intern_str(s.as_str(), &mut symbol_cache));
             }
             Token::Int(i) => {
                 out.push(Sym::Int(i));
@@ -219,7 +227,7 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'
                     .last_mut()
                     .ok_or("closing bracket without a friend")?
                     .0
-                    .push(Sym::Block(inner.into()));
+                    .push(Sym::Block(inner));
             }
             Token::Tick => {
                 let sym = out.pop().ok_or("tick without a symbol")?;

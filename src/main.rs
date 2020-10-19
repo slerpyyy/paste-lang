@@ -6,9 +6,9 @@ use std::{
     process, str,
 };
 
-use paste::eval::*;
-use paste::lex::*;
-use paste::parse::*;
+use paste_lang::eval::*;
+use paste_lang::lex::*;
+use paste_lang::parse::*;
 
 fn show_usage() {
     println!("Usage: paste [OPTIONS] INPUT")

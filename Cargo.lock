@@ -25,7 +25,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "paste"
+name = "paste-lang"
 version = "0.1.0"
 dependencies = [
  "noisy_float",
