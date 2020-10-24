@@ -30,11 +30,7 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn whitespace(&mut self) {
-        while let Some(ch) = self.curr {
-            if !ch.is_whitespace() {
-                return;
-            }
-
+        while self.curr.map_or(false, char::is_whitespace) {
             self.read_next();
         }
     }
