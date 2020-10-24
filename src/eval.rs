@@ -38,7 +38,7 @@ macro_rules! pop_stack {
         <[()]>::len(&[$(pop_stack!(@SUBST; $var)),*])
     };
 
-    (@SUBST; $_i:ident) => { () };
+    (@SUBST; $_:ident) => { () };
 }
 
 impl Default for Evaluator {
@@ -93,6 +93,7 @@ impl Evaluator {
         self.work.extend(prog);
     }
 
+    #[inline]
     fn stack_assert(&self, len: usize) -> Result<(), String> {
         if len > self.stack.len() {
             return Err(format!(

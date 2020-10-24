@@ -92,7 +92,12 @@ impl Sym {
     }
 
     #[inline]
-    fn intern_str(s: &str, cache: &mut HashSet<Rc<str>>) -> Sym {
+    pub fn float(f: impl Into<f64>) -> Self {
+        Sym::Float(r64(f.into()))
+    }
+
+    #[inline]
+    fn interned_str(s: &str, cache: &mut HashSet<Rc<str>>) -> Self {
         if let Ok(n) = Native::from_str(s) {
             Sym::Native(n)
         } else if let Some(cached) = cache.get(s) {
@@ -143,7 +148,7 @@ impl fmt::Display for Sym {
 /// # use paste_lang::{lex::*, parse::*};
 /// let unfinished = check_complete(lex("t ;(put hello"));
 /// let complete = check_complete(lex("t ;(put hello) ="));
-/// let invalid = check_complete(lex("t ;(put hello} ="));
+/// let invalid = check_complete(lex("t ;{put hello) ="));
 ///
 /// assert_eq!(unfinished, Ok(false));
 /// assert_eq!(complete, Ok(true));
@@ -186,16 +191,16 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'
 
         match token {
             Token::Raw(s) => {
-                out.push(Sym::intern_str(s, &mut symbol_cache));
+                out.push(Sym::interned_str(s, &mut symbol_cache));
             }
             Token::String(s) => {
-                out.push(Sym::intern_str(s.as_str(), &mut symbol_cache));
+                out.push(Sym::interned_str(s.as_str(), &mut symbol_cache));
             }
             Token::Int(i) => {
-                out.push(Sym::Int(i));
+                out.push(Sym::int(i));
             }
             Token::Float(f) => {
-                out.push(Sym::Float(r64(f)));
+                out.push(Sym::float(f));
             }
             Token::SemiColon => {
                 *defer_level += 1;
