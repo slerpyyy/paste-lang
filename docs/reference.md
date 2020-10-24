@@ -2,7 +2,7 @@
 
 | Usage | Meaning |
 |---|---|
-| val name `=` | Assigns `name` the meaning of `val` |
+| val name `=` | Assigns `name` the meaning of `val` if `name` is not equal to `_` |
 | symbol `do` | Evaluated `symbol` |
 | cond then else `?` | Evaluated `then` if `cond` is true, and `else` otherwise |
 | cond stmt `while` | If `cond` is true, it evaluates `stmt ;stmt while`, and does nothing otherwise |
@@ -15,4 +15,4 @@
 | y x `==` | Returns 1 if x and y are equal, and 0 otherwise |
 | y x `<` | Returns 1 if `x` is less than `y`, and 0 otherwise |
 | f `floor` | Converts a float `f` into an int by flooring it |
-| code `exit` | Terminates the program with a given exit code |
+| code `exit` | Terminates the program with a given exit code or `-1` if the stack is empty |
