@@ -124,8 +124,7 @@ impl Evaluator {
                 pop_stack!(self, block, sym);
 
                 match block {
-                    Sym::Block(vec) => {
-                        let mut vec = vec;
+                    Sym::Block(mut vec) => {
                         vec.push(sym);
                         self.stack.push(Sym::Block(vec));
                     }

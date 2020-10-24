@@ -1,8 +1,8 @@
 #![warn(clippy::all)]
 use pico_args::Arguments;
 use std::{
-    fs::File,
-    io::{self, Read, Write},
+    fs,
+    io::{self, Write},
     process, str,
 };
 
@@ -48,11 +48,7 @@ fn main() {
     // load scripts
     let mut no_script = true;
     for filename in args.free().unwrap() {
-        let mut file = File::open(filename).expect("failed to open file");
-
-        let mut content = String::new();
-        file.read_to_string(&mut content)
-            .expect("failed to read file");
+        let content = fs::read_to_string(filename).expect("failed to read file");
 
         match paste.extend_code(content.as_str()) {
             Ok(s) => s,
@@ -99,7 +95,7 @@ fn main() {
             println!();
         }
 
-        // finish if in interactive mode
+        // finish if not in interactive mode
         if !repl {
             break;
         }
