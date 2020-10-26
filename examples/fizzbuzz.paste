@@ -1,6 +1,6 @@
 1
 
-(fizzbuzz = ;{
+(fizzbuzz =' ;{
     0
     over 3 xch mod 0 == dup ;(put "Fizz") if +
     over 5 xch mod 0 == dup ;(put "Buzz") if +
