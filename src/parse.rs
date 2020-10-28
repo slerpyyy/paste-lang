@@ -31,7 +31,7 @@ macro_rules! impl_native_enum {
             ///
             /// assert_eq!(nat.to_str(), "=");
             /// ```
-            #[inline]
+            #[inline] #[must_use]
             pub fn to_str(&self) -> &'static str {
                 match self {
                     $(Native::$tok => $text,)+
@@ -154,6 +154,9 @@ impl fmt::Display for Sym {
 /// assert_eq!(complete, Ok(true));
 /// assert!(invalid.is_err());
 /// ```
+/// # Errors
+/// If the given piece of code cannot be completed to valid paste code,
+/// a string describing the problem is returned.
 pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<bool, &'static str> {
     let mut stack = Vec::<bool>::new();
 
@@ -182,6 +185,10 @@ pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<boo
 ///
 /// It converts a given token iterator into a vector of symbols, which is
 /// ready to be evaluated.
+///
+/// # Errors
+/// If the given piece of code cannot be completed to valid paste code,
+/// a string describing the problem is returned.
 pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'static str> {
     let mut stack = vec![(Vec::new(), 0, false)];
     let mut symbol_cache = HashSet::<Rc<str>>::new();

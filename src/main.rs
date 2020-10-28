@@ -1,4 +1,5 @@
 #![warn(clippy::all)]
+
 use pico_args::Arguments;
 use std::{
     fs,
@@ -10,30 +11,23 @@ use paste_lang::eval::*;
 use paste_lang::lex::*;
 use paste_lang::parse::*;
 
-fn show_usage() {
-    println!("Usage: paste [OPTIONS] INPUT")
-}
+const HELP_MSG: &str = "
+Usage: paste [OPTIONS] INPUT
 
-fn show_help() {
-    show_usage();
-    println!(
-        "
 An esoteric programming language build around macros
 
 Options:
     -h, --help    Print this help message and exit.
     -r, --repl    Enter interactive mode after the script terminated.
     -d, --debug   Show all internal computations during evaluation.
-"
-    );
-}
+";
 
 fn main() {
     let mut args = Arguments::from_env();
 
     // output help message
     if args.contains(["-h", "--help"]) {
-        show_help();
+        println!("{}", HELP_MSG);
         process::exit(0);
     }
 

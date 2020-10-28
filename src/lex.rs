@@ -166,6 +166,8 @@ impl<'a> Iterator for Lexer<'a> {
 /// assert_eq!(tokens.next(), Some(Token::Raw("=")));
 /// assert_eq!(tokens.next(), None);
 /// ```
+#[inline]
+#[must_use]
 pub fn lex(source: &'_ str) -> Lexer<'_> {
     let mut lexer = Lexer {
         input: source.chars(),
