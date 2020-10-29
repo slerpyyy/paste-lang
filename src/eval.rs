@@ -372,7 +372,7 @@ mod test {
     use std::str;
 
     #[inline]
-    fn eval_helper(code: &str, expected: &str, steps: usize) {
+    fn eval_helper(code: &str, expected: &str) {
         let prog = parse(lex(code)).unwrap();
         let mut output = Vec::new();
 
@@ -380,7 +380,7 @@ mod test {
         eval.run(&mut io::empty(), &mut io::sink()).unwrap();
 
         eval.extend_program(prog);
-        eval.run_with_timeout(&mut io::empty(), &mut output, steps)
+        eval.run_with_timeout(&mut io::empty(), &mut output, 10_000)
             .unwrap();
         assert!(eval.done(), "Evaluator wasn't done yet\n{}", eval);
 
@@ -390,13 +390,13 @@ mod test {
 
     #[test]
     fn eval_sanity_check() {
-        eval_helper("", "", 0);
+        eval_helper("", "");
     }
 
     #[test]
     fn eval_hello() {
         let code = "1 ;{ \"hello\" ;put do } if";
-        eval_helper(code, "hello", 20);
+        eval_helper(code, "hello");
     }
 
     #[test]
@@ -404,7 +404,7 @@ mod test {
         let code = "\
         (fib =' ;{;n = 0 1 (n >' 0) ;{xch over + (;n =' (n -' 1)) (n !=' 0)} while pop})
         (put (fib 42))";
-        eval_helper(code, "267914296", 5000);
+        eval_helper(code, "267914296");
     }
 
     #[test]
@@ -412,7 +412,7 @@ mod test {
         let code = "\
         (gcd =' ;{1 ;{(copy 2) < ;xch if over xch - (0 !=' over)} while xch pop})
         (put (35 gcd' 91))";
-        eval_helper(code, "7", 1000);
+        eval_helper(code, "7");
     }
 
     #[test]
@@ -420,19 +420,19 @@ mod test {
         let code = "\
         (pow =' ;{;n = ;k = (k >' 1) ;((n pow' (k -' 1)) *' n) ;n ?})
         (0.9 pow' 100) put";
-        eval_helper(code, "0.000026561398887587544", 6000);
+        eval_helper(code, "0.000026561398887587544");
     }
 
     #[test]
     fn eval_do_do_do() {
         let code = "test ;;put do ;;do ;do do do";
-        eval_helper(code, "test", 25);
+        eval_helper(code, "test");
     }
 
     #[test]
     fn eval_quick_maths() {
         let code = "put (9 -' ((3 +' 1) *' 2))'";
-        eval_helper(code, "1", 20);
+        eval_helper(code, "1");
     }
 
     #[test]
@@ -440,43 +440,43 @@ mod test {
         let code = "0 \
         (3.0 2.3 4.5 -7.3 1.7 4.999 5.0) \
         { 1 ;(put dup floor) while }";
-        eval_helper(code, "324-81450", 500);
+        eval_helper(code, "324-81450");
     }
 
     #[test]
     fn eval_add_all_the_things() {
         let code = "(+ + + 1 2 a (+ + 5.2 b 2)) put";
-        eval_helper(code, "3a5.2b2", 30);
+        eval_helper(code, "3a5.2b2");
     }
 
     #[test]
     fn eval_macro_simple() {
         let code = "(5 =' 3) (n =' 5) (put n)";
-        eval_helper(code, "3", 20);
+        eval_helper(code, "3");
     }
 
     #[test]
     fn eval_macro_circle() {
         let code = "(5 =' 3) (3 =' 5) (put 3) (put 5)";
-        eval_helper(code, "33", 30);
+        eval_helper(code, "33");
     }
 
     #[test]
     fn eval_macro_override() {
         let code = "(2 =' 1) (2 =' 3) (1 =' 2) (put 1)";
-        eval_helper(code, "3", 30);
+        eval_helper(code, "3");
     }
 
     #[test]
     fn eval_macro_blocks() {
         let code = "0 1 5 2 3 7 9 ;{ dup put ;b if } b = b";
-        eval_helper(code, "9732510", 150);
+        eval_helper(code, "9732510");
     }
 
     #[test]
     fn eval_while_loop() {
         let code = "0 1 1 1 1 ;(put a) while";
-        eval_helper(code, "aaaa", 300);
+        eval_helper(code, "aaaa");
     }
 
     #[test]
@@ -484,7 +484,7 @@ mod test {
         let code = "\
         0 5 4 (copy 2) 7 6 (copy 3)
         1 ;{dup put} while";
-        eval_helper(code, "6746745450", 500);
+        eval_helper(code, "6746745450");
     }
 
     #[test]
@@ -492,6 +492,6 @@ mod test {
         let code = "\
         (test =' ;{== ;a ;b ? put})
         (test 3 5) (test 4 4)";
-        eval_helper(code, "ba", 50);
+        eval_helper(code, "ba");
     }
 }
