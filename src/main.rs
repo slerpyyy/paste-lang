@@ -1,15 +1,12 @@
 #![warn(clippy::all)]
 
+use paste_lang::*;
 use pico_args::Arguments;
 use std::{
     fs,
     io::{self, Write},
     process, str,
 };
-
-use paste_lang::eval::*;
-use paste_lang::lex::*;
-use paste_lang::parse::*;
 
 const HELP_MSG: &str = "
 Usage: paste [OPTIONS] INPUT

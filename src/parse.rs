@@ -26,7 +26,7 @@ macro_rules! impl_native_enum {
             ///
             /// # Examples
             /// ```
-            /// # use paste_lang::parse::Native;
+            /// # use paste_lang::Native;
             /// let nat = Native::Assign;
             ///
             /// assert_eq!(nat.to_str(), "=");
@@ -145,7 +145,7 @@ impl fmt::Display for Sym {
 ///
 /// # Examples
 /// ```
-/// # use paste_lang::{lex::*, parse::*};
+/// # use paste_lang::*;
 /// let unfinished = check_complete(lex("t ;(put hello"));
 /// let complete = check_complete(lex("t ;(put hello) ="));
 /// let invalid = check_complete(lex("t ;{put hello) ="));
@@ -197,7 +197,7 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'
         let (out, defer_level, _) = stack.last_mut().ok_or("too many closing brackets")?;
 
         match token {
-            Token::Raw(s) => {
+            Token::Str(s) => {
                 out.push(Sym::interned_str(s, &mut symbol_cache));
             }
             Token::String(s) => {

@@ -1,5 +1,9 @@
 #![warn(clippy::all)]
 
-pub mod eval;
-pub mod lex;
-pub mod parse;
+mod eval;
+mod lex;
+mod parse;
+
+pub use eval::*;
+pub use lex::*;
+pub use parse::*;

@@ -2,7 +2,7 @@ use std::str::Chars;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token<'a> {
-    Raw(&'a str),
+    Str(&'a str),
     String(String),
     Int(i64),
     Float(f64),
@@ -77,7 +77,7 @@ impl<'a> Lexer<'a> {
         }
 
         let text = &start[..len];
-        Self::num_parse(text).or_else(|| Some(Token::Raw(text)))
+        Self::num_parse(text).or_else(|| Some(Token::Str(text)))
     }
 
     #[inline]
@@ -153,17 +153,17 @@ impl<'a> Iterator for Lexer<'a> {
 ///
 /// # Examples
 /// ```
-/// # use paste_lang::lex::*;
+/// # use paste_lang::*;
 /// let mut tokens = lex("{ \"hello\" ;put do } test =");
 ///
 /// assert_eq!(tokens.next(), Some(Token::LeftCurly));
 /// assert_eq!(tokens.next(), Some(Token::String("hello".into())));
 /// assert_eq!(tokens.next(), Some(Token::SemiColon));
-/// assert_eq!(tokens.next(), Some(Token::Raw("put")));
-/// assert_eq!(tokens.next(), Some(Token::Raw("do")));
+/// assert_eq!(tokens.next(), Some(Token::Str("put")));
+/// assert_eq!(tokens.next(), Some(Token::Str("do")));
 /// assert_eq!(tokens.next(), Some(Token::RightCurly));
-/// assert_eq!(tokens.next(), Some(Token::Raw("test")));
-/// assert_eq!(tokens.next(), Some(Token::Raw("=")));
+/// assert_eq!(tokens.next(), Some(Token::Str("test")));
+/// assert_eq!(tokens.next(), Some(Token::Str("=")));
 /// assert_eq!(tokens.next(), None);
 /// ```
 #[inline]
@@ -189,12 +189,12 @@ mod test {
         assert_eq!(
             res,
             vec![
-                Token::Raw("test"),
+                Token::Str("test"),
                 Token::LeftCurly,
                 Token::String("hello".into()),
                 Token::SemiColon,
-                Token::Raw("put"),
-                Token::Raw("do"),
+                Token::Str("put"),
+                Token::Str("do"),
                 Token::RightCurly,
             ]
         );
@@ -207,18 +207,18 @@ mod test {
         assert_eq!(
             res,
             vec![
-                Token::Raw("aaa"),
+                Token::Str("aaa"),
                 Token::SemiColon,
                 Token::LeftCurly,
-                Token::Raw("test"),
+                Token::Str("test"),
                 Token::LeftCurly,
-                Token::Raw("hello"),
+                Token::Str("hello"),
                 Token::RightCurly,
                 Token::SemiColon,
-                Token::Raw("put"),
-                Token::Raw("do"),
+                Token::Str("put"),
+                Token::Str("do"),
                 Token::RightCurly,
-                Token::Raw("do"),
+                Token::Str("do"),
             ]
         );
     }
@@ -227,7 +227,7 @@ mod test {
     fn lex_comments() {
         let code = "# comment 1\n# comment 2\naaa# comment 3\n bbb #comment 4";
         let res = lex(code).collect::<Vec<_>>();
-        assert_eq!(res, vec![Token::Raw("aaa"), Token::Raw("bbb")]);
+        assert_eq!(res, vec![Token::Str("aaa"), Token::Str("bbb")]);
     }
 
     #[test]
@@ -236,7 +236,7 @@ mod test {
         let res = lex(code).collect::<Vec<_>>();
         assert_eq!(
             res,
-            vec![Token::String("Hello there!".into()), Token::Raw("put")]
+            vec![Token::String("Hello there!".into()), Token::Str("put")]
         );
     }
 
