@@ -128,21 +128,17 @@ impl Evaluator {
 
             Native::Comma => {
                 pop_stack!(self, block, sym);
-
-                match block {
-                    Sym::Block(mut vec) => {
-                        vec.push(sym);
-                        self.stack.push(Sym::Block(vec));
-                    }
-                    s => {
-                        self.stack.push(Sym::Block(vec![s, sym]));
-                    }
-                }
+                self.stack.push(Sym::Block(vec![block, sym]));
             }
 
             Native::Do => {
                 pop_stack!(self, x);
                 self.work.push_front(x);
+            }
+
+            Native::Defer => {
+                pop_stack!(self, x);
+                self.stack.push(Sym::Defer(x.into()));
             }
 
             Native::Tern => {
@@ -155,24 +151,6 @@ impl Evaluator {
                         self.stack.push(cond);
                         self.stack.push(then_stmt);
                         self.stack.push(else_stmt);
-                        return Err("invalid condition".into());
-                    }
-                }
-            }
-
-            Native::While => {
-                pop_stack!(self, stmt, cond);
-
-                match cond {
-                    Sym::Int(0) => (),
-                    Sym::Int(_) => {
-                        self.work.push_front(Sym::Native(Native::While));
-                        self.work.push_front(Sym::Defer(Box::new(stmt.clone())));
-                        self.work.push_front(stmt);
-                    }
-                    _ => {
-                        self.stack.push(cond);
-                        self.stack.push(stmt);
                         return Err("invalid condition".into());
                     }
                 }
@@ -426,7 +404,7 @@ mod test {
         let code = "\
         (fib =' ;{;n = 0 1 (n >' 0) ;{xch over + (;n =' (n -' 1)) (n !=' 0)} while pop})
         (put (fib 42))";
-        eval_helper(code, "267914296", 3000);
+        eval_helper(code, "267914296", 5000);
     }
 
     #[test]
@@ -434,7 +412,7 @@ mod test {
         let code = "\
         (gcd =' ;{1 ;{(copy 2) < ;xch if over xch - (0 !=' over)} while xch pop})
         (put (35 gcd' 91))";
-        eval_helper(code, "7", 600);
+        eval_helper(code, "7", 1000);
     }
 
     #[test]
@@ -462,7 +440,7 @@ mod test {
         let code = "0 \
         (3.0 2.3 4.5 -7.3 1.7 4.999 5.0) \
         { 1 ;(put dup floor) while }";
-        eval_helper(code, "324-81450", 150);
+        eval_helper(code, "324-81450", 500);
     }
 
     #[test]
@@ -498,7 +476,7 @@ mod test {
     #[test]
     fn eval_while_loop() {
         let code = "0 1 1 1 1 ;(put a) while";
-        eval_helper(code, "aaaa", 50);
+        eval_helper(code, "aaaa", 300);
     }
 
     #[test]
@@ -506,7 +484,7 @@ mod test {
         let code = "\
         0 5 4 (copy 2) 7 6 (copy 3)
         1 ;{dup put} while";
-        eval_helper(code, "6746745450", 200);
+        eval_helper(code, "6746745450", 500);
     }
 
     #[test]
