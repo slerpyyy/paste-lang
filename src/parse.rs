@@ -157,6 +157,7 @@ impl fmt::Display for Sym {
 /// assert_eq!(complete, Ok(true));
 /// assert!(invalid.is_err());
 /// ```
+///
 /// # Errors
 /// If the given piece of code cannot be completed to valid paste code,
 /// a string describing the problem is returned.
@@ -174,7 +175,7 @@ pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<boo
                 match stack.pop() {
                     None => return Err("too many closing brackets"),
                     Some(b) if b != curly => return Err("wrong closing brackets"),
-                    _ => {}
+                    Some(_) => {}
                 }
             }
             _ => {}
@@ -193,7 +194,7 @@ pub fn check_complete<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<boo
 /// If the given piece of code cannot be completed to valid paste code,
 /// a string describing the problem is returned.
 pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'static str> {
-    let mut stack = vec![(Vec::new(), 0, false)];
+    let mut stack = vec![(Vec::new(), 0_u32, false)];
     let mut symbol_cache = HashSet::<Rc<str>>::new();
 
     for token in tokens {
@@ -203,24 +204,30 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'
             Token::Str(s) => {
                 out.push(Sym::interned_str(s, &mut symbol_cache));
             }
+
             Token::String(s) => {
                 out.push(Sym::interned_str(s.as_str(), &mut symbol_cache));
             }
+
             Token::Int(i) => {
                 out.push(Sym::int(i));
             }
+
             Token::Float(f) => {
                 out.push(Sym::float(f));
             }
+
             Token::SemiColon => {
                 *defer_level += 1;
                 continue;
             }
+
             Token::LeftCurly | Token::LeftParen => {
                 let reverse = token == Token::LeftParen;
                 stack.push((Vec::new(), 0, reverse));
                 continue;
             }
+
             Token::RightCurly | Token::RightParen => {
                 if *defer_level > 0 {
                     return Err("nothing to defer");
@@ -244,6 +251,7 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> Result<Vec<Sym>, &'
                     .0
                     .push(Sym::Block(inner));
             }
+
             Token::Tick => {
                 let sym = out.pop().ok_or("tick without a symbol")?;
                 out.insert(0, sym);

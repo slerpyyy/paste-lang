@@ -98,6 +98,7 @@ impl Evaluator {
         self.work.extend(prog);
     }
 
+    // Asserts that the stack holds at least `len` elements.
     #[inline]
     fn stack_assert(&self, len: usize) -> Result<(), String> {
         if len > self.stack.len() {
@@ -111,6 +112,7 @@ impl Evaluator {
         Ok(())
     }
 
+    #[inline]
     fn eval_native(
         &mut self,
         sym: Native,
@@ -120,15 +122,14 @@ impl Evaluator {
         match sym {
             Native::Assign => {
                 pop_stack!(self, key, val);
-
                 if key != val && key != Sym::Text("_".into()) {
                     self.macros.insert(key, val);
                 }
             }
 
             Native::Comma => {
-                pop_stack!(self, block, sym);
-                self.stack.push(Sym::Block(vec![block, sym]));
+                pop_stack!(self, x, y);
+                self.stack.push(Sym::Block(vec![x, y]));
             }
 
             Native::Do => {
@@ -198,7 +199,9 @@ impl Evaluator {
                         return Err("invalid copy amount".into());
                     }
 
-                    for i in len.saturating_sub(amount as _)..len {
+                    let amount = amount as _;
+                    self.stack.reserve(amount);
+                    for i in len.saturating_sub(amount)..len {
                         self.stack.push(self.stack[i].clone());
                     }
                 } else {
@@ -208,9 +211,9 @@ impl Evaluator {
             }
 
             Native::Xch => {
-                pop_stack!(self, x, y);
-                self.stack.push(x);
-                self.stack.push(y);
+                self.stack_assert(2)?;
+                let last = self.stack.len() - 1;
+                self.stack.swap(last - 1, last)
             }
 
             Native::Put => {
@@ -277,15 +280,13 @@ impl Evaluator {
             }
 
             Native::Floor => {
-                pop_stack!(self, num);
-
-                match num {
-                    Sym::Int(_) => self.stack.push(num),
-                    Sym::Float(x) => self.stack.push(Sym::Int(x.floor().raw() as _)),
-                    _ => {
-                        self.stack.push(num);
-                        return Err("operation is undefined".into());
+                self.stack_assert(1)?;
+                match self.stack.last().unwrap() {
+                    Sym::Int(_) => (),
+                    Sym::Float(x) => {
+                        *self.stack.last_mut().unwrap() = Sym::Int(x.floor().raw() as _)
                     }
+                    _ => return Err("operation is undefined".into()),
                 }
             }
 
