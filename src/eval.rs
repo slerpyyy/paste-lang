@@ -468,6 +468,12 @@ mod test {
     }
 
     #[test]
+    fn eval_do_rep_chain() {
+        let code = "0 ;{ x put do } 10 rep do";
+        eval_helper(code, "xxxxxxxxxx");
+    }
+
+    #[test]
     fn eval_quick_maths() {
         let code = "put (9 -' ((3 +' 1) *' 2))'";
         eval_helper(code, "1");

@@ -2,6 +2,7 @@
 
 # Stack manipulation:
 ;{ 1 copy } dup =
+;{ dup ;_n = 1 < ;{ dup 1 _n - dup ;_n = } while pop } rep =
 ;{ _ = } pop =
 # ;{ defer ;_x = defer ;_y = _x _y } xch =
 ;{ 2 copy pop } over =
