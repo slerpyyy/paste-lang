@@ -237,15 +237,11 @@ impl Evaluator {
                 pop_stack!(self, a, b);
 
                 let c = match (sym, a, b) {
-                    (Native::Add, Sym::Text(x), Sym::Text(y)) => Sym::concat(x, y),
-                    (Native::Add, Sym::Text(s), Sym::Int(y)) => Sym::concat(s, y),
-                    (Native::Add, Sym::Text(s), Sym::Float(y)) => Sym::concat(s, y),
-                    (Native::Add, Sym::Int(x), Sym::Text(s)) => Sym::concat(x, s),
                     (Native::Add, Sym::Int(x), Sym::Int(y)) => Sym::int(x + y),
                     (Native::Add, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) + y),
-                    (Native::Add, Sym::Float(x), Sym::Text(s)) => Sym::concat(x, s),
                     (Native::Add, Sym::Float(x), Sym::Int(y)) => Sym::Float(x + r64(y as _)),
                     (Native::Add, Sym::Float(x), Sym::Float(y)) => Sym::Float(x + y),
+                    (Native::Add, x, y) => Sym::concat(x, y),
 
                     (Native::Sub, Sym::Int(x), Sym::Int(y)) => Sym::int(x - y),
                     (Native::Sub, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) - y),
@@ -263,6 +259,7 @@ impl Evaluator {
                     (Native::Div, Sym::Float(x), Sym::Float(y)) => Sym::Float(x / y),
 
                     (Native::Eq, x, y) => Sym::int(x == y),
+
                     (Native::Less, x, y) => Sym::int(x.lt(&y)),
 
                     (_, a, b) => {
