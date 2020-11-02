@@ -141,6 +141,38 @@ impl Evaluator {
                 self.stack.push(Sym::Defer(x.into()));
             }
 
+            Native::If => {
+                pop_stack!(self, stmt, cond);
+
+                match cond {
+                    Sym::Int(0) => (),
+                    Sym::Int(_) => self.work.push_front(stmt),
+                    _ => {
+                        self.stack.push(cond);
+                        self.stack.push(stmt);
+                        return Err("invalid condition".into());
+                    }
+                }
+            }
+
+            Native::While => {
+                pop_stack!(self, stmt, cond);
+
+                match cond {
+                    Sym::Int(0) => (),
+                    Sym::Int(_) => {
+                        self.work.push_front(Sym::Native(Native::While));
+                        self.work.push_front(Sym::Defer(Box::new(stmt.clone())));
+                        self.work.push_front(stmt);
+                    }
+                    _ => {
+                        self.stack.push(cond);
+                        self.stack.push(stmt);
+                        return Err("invalid condition".into());
+                    }
+                }
+            }
+
             Native::Tern => {
                 pop_stack!(self, else_stmt, then_stmt, cond);
 
@@ -173,6 +205,12 @@ impl Evaluator {
                     self.stack.push(num);
                     return Err("invalid copy".into());
                 }
+            }
+
+            Native::Xch => {
+                pop_stack!(self, x, y);
+                self.stack.push(x);
+                self.stack.push(y);
             }
 
             Native::Put => {

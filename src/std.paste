@@ -3,7 +3,7 @@
 # Stack manipulation:
 ;{ 1 copy } dup =
 ;{ _ = } pop =
-;{ defer ;_x = defer ;_y = _x _y } xch =
+# ;{ defer ;_x = defer ;_y = _x _y } xch =
 ;{ 2 copy pop } over =
 ;{ defer ;_x = _ = _x } under =
 
@@ -34,5 +34,5 @@
 # Control flow:
 ;{ 0 exit } quit =
 ;{ -1 exit } abort =
-;{ ;{} ? } if =
-;{ defer dup do , ;while xch , ;{} ? } while =
+# ;{ ;{} ? } if =
+# ;{ defer dup do , ;while xch , ;{} ? } while =
