@@ -480,6 +480,38 @@ mod test {
     }
 
     #[test]
+    fn eval_comp_ass() {
+        let code = "(;n =' 5) (;n +=' 3) \
+        (;n /=' 4) (;n *=' 3) (;n -=' 4) (put n)";
+        eval_helper(code, "2");
+    }
+
+    #[test]
+    fn eval_and_or_exhaustive() {
+        let code = "\
+        (0 &&' 0) put (0 &&' 1) put (1 &&' 0) put (1 &&' 1) put \
+        (0 ||' 0) put (0 ||' 1) put (1 ||' 0) put (1 ||' 1) put ";
+        eval_helper(code, "00010111");
+    }
+
+    #[test]
+    fn eval_and_or_lazy() {
+        let code = "\
+        (0 &&' ;{a put 1}) put \
+        (1 &&' ;{b put 1}) put \
+        (0 ||' ;{c put 0}) put \
+        (1 ||' ;{d put 0}) put";
+        eval_helper(code, "0b1c01");
+    }
+
+    #[test]
+    fn eval_and_lazy_chain() {
+        let code = "(n =' 5) \
+        ((n >' 0 put a) &&' ;(n <' 10 put b) &&' ;(n ==' 3 put c) &&' ;(1 put d)) put";
+        eval_helper(code, "abc0");
+    }
+
+    #[test]
     fn eval_floor_simple() {
         let code = "0 \
         (3.0 2.3 4.5 -7.3 1.7 4.999 5.0) \
