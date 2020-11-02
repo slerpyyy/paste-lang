@@ -29,16 +29,16 @@ impl fmt::Display for Evaluator {
 }
 
 macro_rules! pop_stack {
-    ($self:ident, $($var:ident),*) => {
+    ($self: ident, $($var: ident),*) => {
         $self.stack_assert(pop_stack!(@COUNT; $($var),*))?;
         $(let $var = $self.stack.pop().unwrap();)*
     };
 
-    (@COUNT; $($var:ident),*) => {
+    (@COUNT; $($var: ident),*) => {
         <[()]>::len(&[$(pop_stack!(@SUBST; $var)),*])
     };
 
-    (@SUBST; $_:ident) => { () };
+    (@SUBST; $_: ident) => { () };
 }
 
 impl Default for Evaluator {
@@ -212,8 +212,8 @@ impl Evaluator {
 
             Native::Xch => {
                 self.stack_assert(2)?;
-                let last = self.stack.len() - 1;
-                self.stack.swap(last - 1, last)
+                let len = self.stack.len();
+                self.stack.swap(len - 2, len - 1)
             }
 
             Native::Put => {
@@ -263,11 +263,7 @@ impl Evaluator {
                     (Native::Div, Sym::Float(x), Sym::Float(y)) => Sym::Float(x / y),
 
                     (Native::Eq, x, y) => Sym::int(x == y),
-
-                    (Native::Less, Sym::Int(x), Sym::Int(y)) => Sym::int(x < y),
-                    (Native::Less, Sym::Int(x), Sym::Float(y)) => Sym::int(r64(x as _) < y),
-                    (Native::Less, Sym::Float(x), Sym::Int(y)) => Sym::int(x < r64(y as _)),
-                    (Native::Less, Sym::Float(x), Sym::Float(y)) => Sym::int(x < y),
+                    (Native::Less, x, y) => Sym::int(x.lt(&y)),
 
                     (_, a, b) => {
                         self.stack.push(b);

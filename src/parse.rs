@@ -1,5 +1,6 @@
 use crate::lex::*;
 use noisy_float::prelude::{r64, R64};
+use std::cmp::Ordering;
 use std::{collections::HashSet, fmt, rc::Rc, str::FromStr};
 
 macro_rules! impl_native_enum {
@@ -76,6 +77,30 @@ pub enum Sym {
     Text(Rc<str>),
     Block(Vec<Sym>),
     Defer(Box<Sym>),
+}
+
+impl PartialOrd for Sym {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        match (self, rhs) {
+            (Sym::Native(x), Sym::Native(y)) => x.to_str().partial_cmp(y.to_str()),
+            (Sym::Native(x), Sym::Int(y)) => x.to_str().partial_cmp(y.to_string().as_str()),
+            (Sym::Native(x), Sym::Float(y)) => x.to_str().partial_cmp(y.to_string().as_str()),
+            (Sym::Native(x), Sym::Text(y)) => x.to_str().partial_cmp(y),
+            (Sym::Int(x), Sym::Native(y)) => x.to_string().as_str().partial_cmp(y.to_str()),
+            (Sym::Int(x), Sym::Int(y)) => x.partial_cmp(y),
+            (Sym::Int(x), Sym::Float(y)) => r64(*x as _).partial_cmp(y),
+            (Sym::Int(x), Sym::Text(y)) => x.to_string().as_str().partial_cmp(y),
+            (Sym::Float(x), Sym::Native(y)) => x.to_string().as_str().partial_cmp(y.to_str()),
+            (Sym::Float(x), Sym::Int(y)) => x.partial_cmp(&r64(*y as _)),
+            (Sym::Float(x), Sym::Float(y)) => x.partial_cmp(y),
+            (Sym::Float(x), Sym::Text(y)) => x.to_string().as_str().partial_cmp(&y),
+            (Sym::Text(x), Sym::Native(y)) => x.as_ref().partial_cmp(y.to_str()),
+            (Sym::Text(x), Sym::Int(y)) => x.as_ref().partial_cmp(y.to_string().as_str()),
+            (Sym::Text(x), Sym::Float(y)) => x.as_ref().partial_cmp(y.to_string().as_str()),
+            (Sym::Text(x), Sym::Text(y)) => x.partial_cmp(y),
+            _ => None,
+        }
+    }
 }
 
 impl Sym {
