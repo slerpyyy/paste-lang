@@ -46,5 +46,6 @@
 # Control flow:
 ;{ 0 exit } quit =
 ;{ -1 exit } abort =
+# ;{ 1 xch ;{} ? } do =
 # ;{ ;{} ? } if =
-# ;{ defer dup do , ;while xch , ;{} ? } while =
+# ;{ defer dup do , ;while xch + ;{} ? } while =

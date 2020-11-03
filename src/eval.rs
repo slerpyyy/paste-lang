@@ -104,8 +104,7 @@ impl Evaluator {
         if len > self.stack.len() {
             return Err(format!(
                 "expected {} items on the stack, found {}",
-                len,
-                self.stack.len()
+                len, self.stack.len()
             ));
         }
 
@@ -241,6 +240,9 @@ impl Evaluator {
                     (Native::Add, Sym::Int(x), Sym::Float(y)) => Sym::Float(r64(x as _) + y),
                     (Native::Add, Sym::Float(x), Sym::Int(y)) => Sym::Float(x + r64(y as _)),
                     (Native::Add, Sym::Float(x), Sym::Float(y)) => Sym::Float(x + y),
+                    (Native::Add, Sym::Block(mut x), Sym::Block(y)) => Sym::Block({x.extend(y); x}),
+                    (Native::Add, Sym::Block(mut x), y) => Sym::Block({x.push(y); x}),
+                    (Native::Add, x, Sym::Block(mut y)) => Sym::Block({y.insert(0, x); y}),
                     (Native::Add, x, y) => Sym::concat(x, y),
 
                     (Native::Sub, Sym::Int(x), Sym::Int(y)) => Sym::int(x - y),
@@ -262,10 +264,14 @@ impl Evaluator {
 
                     (Native::Less, x, y) => Sym::int(x.lt(&y)),
 
-                    (_, a, b) => {
+                    (op, a, b) => {
+                        let error = Err(format!(
+                            "operation `{}` is undefined for `{}` and `{}`",
+                            op, a, b
+                        ));
                         self.stack.push(b);
                         self.stack.push(a);
-                        return Err("operation is undefined".into());
+                        return error;
                     }
                 };
 
@@ -412,7 +418,7 @@ mod test {
         eval.run(&mut io::empty(), &mut io::sink()).unwrap();
 
         eval.extend_program(prog);
-        eval.run_with_timeout(&mut io::empty(), &mut output, 10_000)
+        eval.run_with_timeout(&mut io::empty(), &mut output, 100_000)
             .unwrap();
         assert!(eval.done(), "Evaluator wasn't done yet\n{}", eval);
 
@@ -451,8 +457,8 @@ mod test {
     fn eval_power() {
         let code = "\
         (pow =' ;{;n = ;k = (k >' 1) ;((n pow' (k -' 1)) *' n) ;n ?})
-        (0.9 pow' 100) put";
-        eval_helper(code, "0.000026561398887587544");
+        (1.01 pow' 100) put";
+        eval_helper(code, "2.7048138294215294");
     }
 
     #[test]
@@ -515,8 +521,14 @@ mod test {
 
     #[test]
     fn eval_add_all_the_things() {
-        let code = "(+ + + 1 2 a (+ + 5.2 b 2)) put";
-        eval_helper(code, "3a5.2b2");
+        let code = "(+ + + + 1 ;+ 2 a (+ + 5.2 b 2)) put";
+        eval_helper(code, "1+2a5.2b2");
+    }
+
+    #[test]
+    fn eval_add_blocks() {
+        let code = "(put + 1 + + , 2 3 ;{4 5} 6)";
+        eval_helper(code, "{ 1 2 3 4 5 6 }");
     }
 
     #[test]
