@@ -280,11 +280,13 @@ impl Evaluator {
 
             Native::Floor => {
                 self.stack_assert(1)?;
-                match self.stack.last().unwrap() {
+
+                // SAFETY: The unwrap cannot panic because the
+                // stack_assert above fails if the stack is empty.
+                let s = self.stack.last_mut().unwrap();
+                match s {
                     Sym::Int(_) => (),
-                    Sym::Float(x) => {
-                        *self.stack.last_mut().unwrap() = Sym::Int(x.floor().raw() as _)
-                    }
+                    Sym::Float(x) => *s = Sym::Int(x.floor().raw() as _),
                     _ => return Err("operation is undefined".into()),
                 }
             }

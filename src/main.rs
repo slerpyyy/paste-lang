@@ -38,7 +38,7 @@ fn main() {
 
     // load scripts
     let mut no_script = true;
-    for filename in args.free().unwrap() {
+    for filename in args.finish() {
         let content = fs::read_to_string(filename).expect("failed to read file");
 
         match paste.extend_code(content.as_str()) {

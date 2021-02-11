@@ -1,7 +1,6 @@
 use crate::lex::*;
 use noisy_float::prelude::{r64, R64};
-use std::cmp::Ordering;
-use std::{collections::HashSet, fmt, rc::Rc, str::FromStr};
+use std::{cmp::Ordering, collections::HashSet, fmt, rc::Rc, str::FromStr};
 
 macro_rules! impl_native_enum {
     ($($tok: ident => $text: literal,)+) => {
